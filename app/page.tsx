@@ -35,7 +35,7 @@ export default function Home() {
   }, [])
 
   return (
-    <main className="min-h-screen p-4 font-mono text-[12px] md:text-sm">
+    <main className="min-h-screen p-4 font-mono text-[12px] md:text-sm animated-bg">
       <div className="max-w-6xl mx-auto border border-green-500/30 bg-black/50 p-6 shadow-[0_0_20px_rgba(0,255,65,0.1)]">
         
         {/* Header */}
@@ -74,7 +74,7 @@ export default function Home() {
             </div>
             <div className="p-4 overflow-y-auto space-y-4 flex-1 scrollbar-hide">
               {projects.map((p) => (
-                <div key={p.id} className="border border-green-500/30 p-4 hover:bg-green-500/5 cursor-pointer transition-all">
+                <div key={p.id} className="border border-green-500/30 p-4 hover:bg-green-500/5 cursor-pointer transition-all card-float">
                   <h3 className="text-white font-bold mb-1 uppercase tracking-tight">{p.title}</h3>
                   <p className="text-green-500/60 text-xs leading-relaxed">{p.description}</p>
                   <button
