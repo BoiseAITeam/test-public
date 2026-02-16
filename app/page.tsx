@@ -11,6 +11,8 @@ const supabase = createClient(
 export default function Home() {
   const [logs, setLogs] = useState<any[]>([])
   const [projects, setProjects] = useState<any[]>([])
+  const [selectedProject, setSelectedProject] = useState<any | null>(null)
+  const [viewMode, setViewMode] = useState<'preview' | 'source'>('preview')
 
   useEffect(() => {
     const loadData = async () => {
@@ -75,15 +77,46 @@ export default function Home() {
                 <div key={p.id} className="border border-green-500/30 p-4 hover:bg-green-500/5 cursor-pointer transition-all">
                   <h3 className="text-white font-bold mb-1 uppercase tracking-tight">{p.title}</h3>
                   <p className="text-green-500/60 text-xs leading-relaxed">{p.description}</p>
-                  <div className="mt-3 text-[10px] border border-green-500/50 inline-block px-2 py-1 hover:bg-green-500 hover:text-black transition-colors">
+                  <button
+                    onClick={() => { setSelectedProject(p); setViewMode('preview') }}
+                    className="mt-3 text-[10px] border border-green-500/50 inline-block px-2 py-1 hover:bg-green-500 hover:text-black transition-colors"
+                  >
                     VIEW_CODE_OUTPUT
-                  </div>
+                  </button> 
                 </div>
               ))}
             </div>
           </div>
         </div>
       </div>
+
+      {selectedProject && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-6">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setSelectedProject(null)} />
+          <div className="relative w-full max-w-4xl bg-[#0b0b0b] border border-green-500/30 rounded shadow-lg overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-green-500/20">
+              <div>
+                <h2 className="text-sm font-bold">{selectedProject.title}</h2>
+                <div className="text-xs text-green-500/60">{new Date(selectedProject.created_at).toLocaleString()}</div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setViewMode('preview')} className={`px-3 py-1 text-[11px] rounded ${viewMode === 'preview' ? 'bg-green-500 text-black' : 'bg-transparent border border-green-500/30 text-green-400'}`}>Preview</button>
+                <button onClick={() => setViewMode('source')} className={`px-3 py-1 text-[11px] rounded ${viewMode === 'source' ? 'bg-green-500 text-black' : 'bg-transparent border border-green-500/30 text-green-400'}`}>Source</button>
+                <button onClick={() => navigator.clipboard?.writeText(selectedProject.content || '')} className="px-3 py-1 text-[11px] border border-green-500/30 rounded text-green-400">Copy</button>
+                <button onClick={() => setSelectedProject(null)} className="px-3 py-1 text-[11px] border border-red-600/30 rounded text-red-400">Close</button>
+              </div>
+            </div>
+            <div className="p-4 max-h-[70vh] overflow-auto bg-black/90">
+              {viewMode === 'preview' ? (
+                <div className="max-w-full" dangerouslySetInnerHTML={{ __html: selectedProject.content || '<div className="text-xs text-green-400">No content</div>' }} />
+              ) : (
+                <pre className="whitespace-pre-wrap text-[12px] text-green-200 bg-black/90 p-3 rounded"><code>{selectedProject.content}</code></pre>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </main>
   )
 }
