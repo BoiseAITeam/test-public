@@ -521,7 +521,8 @@ function filterSubs() {
   const filtered = subs.filter(s => {
     const matchSearch = !search || s.company_name.toLowerCase().includes(search) || s.contact_name.toLowerCase().includes(search) || (s.trade || '').toLowerCase().includes(search);
     const matchStatus = !statusF || s.computed_status === statusF;
-    return matchSearch && matchStatus;
+    const matchGC = !gcF || (s.general_contractors || []).some(gc => String(gc.id) === gcF) || (s.gc_ids || []).includes(parseInt(gcF));
+    return matchSearch && matchStatus && matchGC;
   });
 
   const tbody = document.getElementById('subTbody');
@@ -810,7 +811,6 @@ function policyForm(p, agents) {
       <select class="form-select" id="pf_type">
         <option value="general_liability" ${p.policy_type==='general_liability'?'selected':''}>General Liability</option>
         <option value="workers_comp" ${p.policy_type==='workers_comp'?'selected':''}>Workers' Compensation</option>
-        <option value="auto" ${p.policy_type==='auto'?'selected':''}>Commercial Auto</option>
       </select>
     </div>
     <div class="col-md-6"><label class="form-label">Status</label>
@@ -1059,9 +1059,11 @@ async function openEmailComposer(subId) {
   showEmailModal(sub, null, templates, 'certificate_request');
 }
 
-function openEmailForPolicy(policy) {
-  const templates = emailContext.templates || [];
-  const sub = emailContext.sub || {};
+async function openEmailForPolicy(policy) {
+  let templates = emailContext.templates || [];
+  if (templates.length === 0) {
+    try { templates = await api('GET', '/email-templates'); } catch(e) {}
+  }
   const subject = `ACTION REQUIRED: Insurance Expiring Soon – ${policy.sub_name || ''}`;
   const body = `Dear ${policy.agent_name || 'Agent'},\n\nThis is a reminder that the ${policy.policy_type === 'general_liability' ? 'General Liability' : "Workers' Comp"} policy for ${policy.sub_name} (Policy #${policy.policy_number || 'N/A'}) expires on ${fmtDate(policy.expiration_date)}.\n\nPlease provide a renewed certificate of insurance at your earliest convenience.\n\nSend to: compliance@insuretrack.com\n\nThank you,\nDawn Mitchell\nInsureTrack Compliance Services`;
 
@@ -1113,13 +1115,13 @@ function emailComposerHTML(ctx, templates) {
         <option value="">— Custom —</option>${tmplOpts}
       </select>
     </div>
-    <div class="mb-3"><label class="form-label">To *</label><input type="email" class="form-control" id="em_to" value="${ctx.to_email || ''}" placeholder="agent@agency.com"></div>
-    <div class="mb-3"><label class="form-label">To Name</label><input class="form-control" id="em_to_name" value="${ctx.to_name || ''}"></div>
-    <div class="mb-3"><label class="form-label">Subject *</label><input class="form-control" id="em_subject" value="${(ctx.subject || '').replace(/"/g, '&quot;')}"></div>
-    <div class="mb-3"><label class="form-label">Message Body *</label><textarea class="form-control" id="em_body" rows="10" style="font-family:monospace;font-size:.85rem">${ctx.body || ''}</textarea></div>
-    <input type="hidden" id="em_sub_id" value="${ctx.sub_id || ''}">
-    <input type="hidden" id="em_policy_id" value="${ctx.policy_id || ''}">
-    <input type="hidden" id="em_type" value="${ctx.template_type || 'custom'}">
+    <div class="mb-3"><label class="form-label">To *</label><input type="email" class="form-control" id="em_to" value="${escAttr(ctx.to_email)}" placeholder="agent@agency.com"></div>
+    <div class="mb-3"><label class="form-label">To Name</label><input class="form-control" id="em_to_name" value="${escAttr(ctx.to_name)}"></div>
+    <div class="mb-3"><label class="form-label">Subject *</label><input class="form-control" id="em_subject" value="${escAttr(ctx.subject)}"></div>
+    <div class="mb-3"><label class="form-label">Message Body *</label><textarea class="form-control" id="em_body" rows="10" style="font-family:monospace;font-size:.85rem">${esc(ctx.body)}</textarea></div>
+    <input type="hidden" id="em_sub_id" value="${escAttr(ctx.sub_id)}">
+    <input type="hidden" id="em_policy_id" value="${escAttr(ctx.policy_id)}">
+    <input type="hidden" id="em_type" value="${escAttr(ctx.template_type || 'custom')}">
     <div class="alert alert-info mb-0" style="font-size:.8rem"><i class="bi bi-info-circle me-1"></i>Emails are logged for compliance purposes. In production, configure SMTP settings to send real emails.</div>`;
 }
 
@@ -1193,14 +1195,14 @@ async function renderEmails() {
             ? '<div class="empty-state"><i class="bi bi-envelope"></i>No emails sent yet</div>'
             : `<table class="table table-hover mb-0">
             <thead><tr><th>Date</th><th>To</th><th>Type</th><th>Subject</th><th>Sent By</th><th></th></tr></thead>
-            <tbody>${emails.map(e => `<tr>
+            <tbody>${emails.map(e => { window._emailCache = window._emailCache || {}; window._emailCache[e.id] = e; return `<tr>
               <td style="font-size:.8rem;white-space:nowrap">${fmtDateTime(e.sent_at)}</td>
-              <td><strong>${e.to_name || ''}</strong><br><small class="text-muted">${e.to_email}</small></td>
-              <td><span class="badge bg-secondary" style="font-size:.7rem">${(e.template_type || 'custom').replace(/_/g,' ')}</span></td>
-              <td style="font-size:.85rem">${e.subject}</td>
-              <td style="font-size:.8rem">${e.sent_by_name || '—'}</td>
-              <td><button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="previewEmail(${JSON.stringify(e).replace(/"/g,'&quot;')})"><i class="bi bi-eye"></i></button></td>
-            </tr>`).join('')}
+              <td><strong>${esc(e.to_name || '')}</strong><br><small class="text-muted">${esc(e.to_email)}</small></td>
+              <td><span class="badge bg-secondary" style="font-size:.7rem">${esc((e.template_type || 'custom').replace(/_/g,' '))}</span></td>
+              <td style="font-size:.85rem">${esc(e.subject)}</td>
+              <td style="font-size:.8rem">${esc(e.sent_by_name || '—')}</td>
+              <td><button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="previewEmailById(${e.id})"><i class="bi bi-eye"></i></button></td>
+            </tr>`; }).join('')}
             </tbody>
           </table>`}
         </div>
@@ -1213,16 +1215,22 @@ function openEmailComposerBlank() {
   new bootstrap.Modal(document.getElementById('emailModal')).show();
 }
 
+function previewEmailById(id) {
+  const email = (window._emailCache || {})[id];
+  if (email) previewEmail(email);
+  else alert('Email data not found. Please reload the page.');
+}
+
 function previewEmail(email) {
   const w = window.open('', '_blank', 'width=700,height=600');
   w.document.write(`<!DOCTYPE html><html><head><title>Email Preview</title></head><body style="font-family:sans-serif;padding:20px;max-width:600px">
     <div style="background:#f5f5f5;padding:15px;border-radius:8px;margin-bottom:15px">
-      <strong>To:</strong> ${email.to_name || ''} &lt;${email.to_email}&gt;<br>
-      <strong>Subject:</strong> ${email.subject}<br>
+      <strong>To:</strong> ${esc(email.to_name || '')} &lt;${esc(email.to_email)}&gt;<br>
+      <strong>Subject:</strong> ${esc(email.subject)}<br>
       <strong>Sent:</strong> ${fmtDateTime(email.sent_at)}<br>
-      <strong>Type:</strong> ${email.template_type || 'custom'}
+      <strong>Type:</strong> ${esc(email.template_type || 'custom')}
     </div>
-    <pre style="white-space:pre-wrap;font-family:inherit;font-size:14px">${email.body}</pre>
+    <pre style="white-space:pre-wrap;font-family:inherit;font-size:14px">${esc(email.body)}</pre>
   </body></html>`);
 }
 
@@ -1246,9 +1254,10 @@ async function renderTemplates() {
             </h2>
             <div id="tmpl-body-${t.id}" class="accordion-collapse collapse ${i === 0 ? 'show' : ''}">
               <div class="accordion-body">
-                <div class="mb-2"><label class="form-label">Subject</label><input class="form-control" id="ts_subject_${t.id}" value="${t.subject.replace(/"/g, '&quot;')}"></div>
+                <div class="mb-2"><label class="form-label">Template Name</label><input class="form-control" id="ts_name_${t.id}" value="${escAttr(t.name)}"></div>
+                <div class="mb-2"><label class="form-label">Subject</label><input class="form-control" id="ts_subject_${t.id}" value="${escAttr(t.subject)}"></div>
                 <div class="mb-3"><label class="form-label">Body <small class="text-muted">(available vars: {{sub_name}}, {{agent_name}}, {{gc_name}}, {{admin_name}}, {{gl_policy_number}}, {{wc_policy_number}})</small></label>
-                  <textarea class="form-control" id="ts_body_${t.id}" rows="12" style="font-family:monospace;font-size:.8rem">${t.body}</textarea>
+                  <textarea class="form-control" id="ts_body_${t.id}" rows="12" style="font-family:monospace;font-size:.8rem">${esc(t.body)}</textarea>
                 </div>
                 <button class="btn btn-sm btn-primary" onclick="saveTmpl(${t.id})"><i class="bi bi-save me-1"></i>Save Changes</button>
               </div>
@@ -1261,7 +1270,7 @@ async function renderTemplates() {
 
 async function saveTmpl(id) {
   const body = {
-    name: 'Template',
+    name: document.getElementById(`ts_name_${id}`).value.trim() || 'Template',
     subject: document.getElementById(`ts_subject_${id}`).value,
     body: document.getElementById(`ts_body_${id}`).value
   };
@@ -1410,6 +1419,18 @@ async function checkExpirations() {
 }
 
 // ==================== UTILITIES ====================
+function esc(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
+function escAttr(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function statusBadge(status) {
   const map = {
     active: '<span class="badge-active"><i class="bi bi-check-circle me-1"></i>Compliant</span>',

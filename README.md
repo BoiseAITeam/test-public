@@ -1,16 +1,68 @@
 # InsureTrack — Subcontractor Insurance Compliance
 
-A self-contained, single-file web app for managing subcontractor insurance compliance. No server, no installation, no database setup required. Just open the HTML file in any modern browser and you're running.
+A web app for managing subcontractor insurance compliance, built with Node.js/Express and PostgreSQL (Supabase). Designed to deploy to **Vercel** (backend) and **Supabase** (database).
 
 ---
 
-## Quick Start
+## Quick Start (Local Development)
 
-1. Open `InsureTrack.html` in Chrome, Edge, or Firefox
-2. The app seeds demo data automatically on first load
-3. Log in with any of the demo accounts below
+### Prerequisites
+- Node.js 18+
+- A Supabase project (free tier works) or local PostgreSQL instance
 
-> **Note:** Data is stored in your browser's `localStorage`. It persists between sessions on the same browser/computer. To reset all data, open the browser console and run `localStorage.clear()`, then reload.
+### Setup
+
+1. **Clone the repo** and install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. **Create your database**: Run the SQL files in your Supabase SQL Editor (or any PostgreSQL):
+   ```
+   supabase/schema.sql   ← creates all tables and indexes
+   supabase/seed.sql     ← inserts demo data (update password hashes first)
+   ```
+
+3. **Generate password hashes** for the seed data:
+   ```bash
+   node supabase/hash-passwords.js
+   ```
+   Copy the output hashes and replace `__ADMIN_HASH__`, `__GC_HASH__`, `__AGENT_HASH__` in `supabase/seed.sql`.
+
+4. **Configure environment**: Copy `.env.example` to `.env` and fill in your values:
+   ```bash
+   cp .env.example .env
+   ```
+   Set `DATABASE_URL` to your Supabase connection string and `JWT_SECRET` to a random 32+ character string.
+
+5. **Start the server**:
+   ```bash
+   npm start
+   ```
+   Or use the startup script:
+   ```bash
+   ./start.sh
+   ```
+
+6. Open `http://localhost:3001` in your browser.
+
+---
+
+## Deploying to Vercel + Supabase
+
+### Supabase Setup
+1. Create a new project at [supabase.com](https://supabase.com)
+2. Go to **SQL Editor** → run `supabase/schema.sql`, then `supabase/seed.sql`
+3. Get your **Connection Pooler** string from: Project Settings → Database → Connection Pooling (Transaction mode, port 6543)
+
+### Vercel Setup
+1. Push this repo to GitHub
+2. Import the repo in [vercel.com](https://vercel.com)
+3. Add environment variables:
+   - `DATABASE_URL` — your Supabase connection string
+   - `JWT_SECRET` — a random secret (32+ characters)
+   - `NODE_ENV` — `production`
+4. Deploy — Vercel will use `vercel.json` to route all requests through `server.js`
 
 ---
 
@@ -25,9 +77,15 @@ A self-contained, single-file web app for managing subcontractor insurance compl
 
 ---
 
-## Pre-Loaded Demo Data
+## Standalone HTML Version
 
-The app comes with realistic seed data that demonstrates every compliance state:
+A standalone version of the app (`public/InsureTrack.html`) is also included that runs entirely in the browser using `localStorage` — no server or database required. Open it directly in Chrome, Edge, or Firefox.
+
+> **Note:** The standalone version is for demo/evaluation purposes. For production use with multiple users, use the server version with Supabase.
+
+---
+
+## Pre-Loaded Demo Data
 
 ### Subcontractors (5)
 
@@ -43,9 +101,10 @@ The app comes with realistic seed data that demonstrates every compliance state:
 - **Apex Building Group** (Tom Reynolds) — requires Additional Insured on all policies
 - **Mountain Crest Construction** (Sarah Johnson) — no Additional Insured requirement
 
-### Insurance Agents (2)
+### Insurance Agents (3)
 - **Mike Torres** — Idaho First Insurance
-- **Linda Park** — Statewide Coverage *(add via Admin → Insurance Agents)*
+- **Linda Park** — Statewide Coverage
+- **Robert Chen** — Peak Coverage Insurance
 
 ---
 
@@ -65,7 +124,7 @@ The main working area. Click any row to open the detail panel, which has four ta
 - **Overview** — contact info, status badge, quick policy summary
 - **Policies** — each GL/WC policy with coverage amounts, carrier, dates, expiration status, Additional Insured flag, Ghost Policy option; verify button marks the certificate as reviewed
 - **W9 Info** — tax ID (masked), entity type, signature date, on-file status, year; warning if expired year
-- **GC Links** — which GCs this sub is assigned to; ability to add/remove GC assignments
+- **GC Links** — which GCs this sub is assigned to
 
 **Add Subcontractor** — form includes all contact fields, trade, sole proprietor toggle, W9 fields, and notes.
 
@@ -78,58 +137,36 @@ The main working area. Click any row to open the detail panel, which has four ta
 Admin-only section. View and manage GC profiles:
 - Company details, contact, license number
 - **Require Additional Insured** toggle — when checked, flags any sub under this GC that hasn't confirmed AI on their policy
-- Click any GC row to edit
 
 ### Insurance Agents
 Admin-only section. Manage agent records:
 - Name, agency, email, phone
 - Agents are linked to policies
-- From the email modal, you can send a certificate request to the agent directly
 
 ### Email Log
-All outbound emails generated by the app are logged here with:
+All outbound emails generated by the app are logged with:
 - Sent date/time, recipient, subject, body preview
 - Status (sent / pending)
-- Click any row to read the full email body
-
-Emails are sent from the following places:
-- **Request Certificate** button on any policy card → emails the assigned agent
-- **Send Email** button on any subcontractor or agent record
-- Automated expiration warning emails (triggered from the Notifications panel)
+- Click any row to preview the full email
 
 ### Email Templates
-Admin can create and edit reusable email templates. Four templates are pre-loaded:
+Admin can create and edit reusable email templates:
 1. Certificate Request — sent to agents when a new certificate is needed
-2. Expiration Warning (30-day) — sent when a policy is 30 days from expiry
-3. Policy Validation — sent to confirm a certificate has been received and verified
-4. Onboarding Welcome — sent to new subcontractors being added to the system
+2. Policy Validation — sent to confirm coverage status
+3. Expiration Warning — sent when a policy is near expiry
+4. Onboarding Welcome — sent to new subcontractors
 
-Each template supports plain-text variables that auto-fill when used:
-`{subcontractor_name}`, `{policy_type}`, `{expiration_date}`, `{gc_name}`, `{agent_name}`, `{coverage_amount}`
+Templates support variables: `{{sub_name}}`, `{{agent_name}}`, `{{gc_name}}`, `{{admin_name}}`, `{{gl_policy_number}}`, `{{wc_policy_number}}`
 
 ### Compliance Report
-Full tabular report of all subcontractors with:
-- Compliance status
-- W9 status
-- GL policy status and expiration
-- WC policy status and expiration
-- Additional Insured confirmation status
-
-**Export to CSV** button downloads a spreadsheet-ready file.
-
-Admin can filter the report by GC before exporting.
+Full tabular report with CSV export.
 
 ### Notifications
-Unread alert badges appear on the bell icon in the top bar. Pre-loaded notifications include:
-- Rocky Mountain Plumbing — GL expiring in 22 days
-- Rocky Mountain Plumbing — WC expired
-- Dave's Drywall — W9 missing
-
-Click any notification to jump to the related record. Mark individual items or all as read.
+Alert badges for expiring policies, expired policies, and missing W9s.
 
 ---
 
-## Business Rules Implemented
+## Business Rules
 
 | Rule | Behavior |
 |------|----------|
@@ -140,46 +177,32 @@ Click any notification to jump to the related record. Mark individual items or a
 | **Sole proprietor** | Idaho exemption flag; WC optional, noted in record |
 | **Additional Insured** | Per-GC toggle; flags sub if not confirmed on their policy |
 | **Ghost Policy** | Checkbox on each policy for tracking ghost/shell policies |
-| **Status priority** | Expired policy → Non-Compliant overrides everything; no W9 → Pending; expiring ≤30 days → Expiring Soon; all clear → Active |
+| **Status priority** | Expired → Non-Compliant; no W9 → Pending; ≤30 days → Expiring Soon; else → Active |
 
 ---
 
-## Data Reset
-
-To start fresh and re-run the seed data:
-1. Open browser DevTools (F12)
-2. Go to the **Console** tab
-3. Run: `localStorage.clear()`
-4. Reload the page
-
-To inspect stored data:
-```js
-// See all tables
-['users','gcs','subs','agents','policies','templates','email_log','notifications','gc_subs']
-  .forEach(t => console.log(t, JSON.parse(localStorage.getItem('it_'+t)||'[]')))
-```
-
----
-
-## Folder Contents
+## Folder Structure
 
 ```
 insuretrack/
-├── InsureTrack.html     ← The app. Open this in your browser.
-├── README.md            ← This file
-├── package.json         ← Node.js server (optional, for team/hosted use)
-├── server.js            ← Express + SQLite backend (optional)
-└── public/
-    └── index.html       ← Server-rendered version of the SPA
+├── public/
+│   ├── index.html           ← Server-backed SPA (frontend)
+│   └── InsureTrack.html     ← Standalone localStorage version
+├── supabase/
+│   ├── schema.sql           ← Database schema
+│   ├── seed.sql             ← Demo data
+│   └── hash-passwords.js    ← Generate bcrypt hashes for seeds
+├── server.js                ← Express + PostgreSQL backend
+├── package.json             ← Dependencies and scripts
+├── vercel.json              ← Vercel deployment config
+├── start.sh                 ← Local startup script
+├── .env.example             ← Environment variable template
+└── README.md                ← This file
 ```
-
-The Node.js server version (`server.js`) supports the same features with a real SQLite database, JWT authentication, and multi-user sessions. To run it: `node --experimental-sqlite server.js` (requires Node.js 22+).
 
 ---
 
 ## Testing Checklist
-
-Use this to verify all features are working:
 
 - [ ] Log in as Admin (`dawn@insuretrack.com / admin123`)
 - [ ] Dashboard shows 5 subs total with correct status breakdown

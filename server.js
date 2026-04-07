@@ -240,6 +240,7 @@ app.get('/api/subcontractors', authMiddleware, async (req, res) => {
       const policies = await query('SELECT * FROM insurance_policies WHERE sub_id=$1', [s.id]);
       const glPolicy = policies.find(p => p.policy_type === 'general_liability') || null;
       const wcPolicy = policies.find(p => p.policy_type === 'workers_comp') || null;
+      const gcLinks = await query('SELECT gc_id FROM gc_subcontractor WHERE sub_id=$1 AND is_active=TRUE', [s.id]);
       return {
         ...s,
         computed_status: await computeSubStatus(s.id),
@@ -248,6 +249,7 @@ app.get('/api/subcontractors', authMiddleware, async (req, res) => {
         gl_days_remaining: glPolicy ? getDaysUntilExpiration(glPolicy.expiration_date) : null,
         wc_days_remaining: wcPolicy ? getDaysUntilExpiration(wcPolicy.expiration_date) : null,
         policy_count: policies.length,
+        gc_ids: gcLinks.map(r => r.gc_id),
       };
     }));
 
