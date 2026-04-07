@@ -1115,13 +1115,13 @@ function emailComposerHTML(ctx, templates) {
         <option value="">— Custom —</option>${tmplOpts}
       </select>
     </div>
-    <div class="mb-3"><label class="form-label">To *</label><input type="email" class="form-control" id="em_to" value="${ctx.to_email || ''}" placeholder="agent@agency.com"></div>
-    <div class="mb-3"><label class="form-label">To Name</label><input class="form-control" id="em_to_name" value="${ctx.to_name || ''}"></div>
-    <div class="mb-3"><label class="form-label">Subject *</label><input class="form-control" id="em_subject" value="${(ctx.subject || '').replace(/"/g, '&quot;')}"></div>
-    <div class="mb-3"><label class="form-label">Message Body *</label><textarea class="form-control" id="em_body" rows="10" style="font-family:monospace;font-size:.85rem">${ctx.body || ''}</textarea></div>
-    <input type="hidden" id="em_sub_id" value="${ctx.sub_id || ''}">
-    <input type="hidden" id="em_policy_id" value="${ctx.policy_id || ''}">
-    <input type="hidden" id="em_type" value="${ctx.template_type || 'custom'}">
+    <div class="mb-3"><label class="form-label">To *</label><input type="email" class="form-control" id="em_to" value="${escAttr(ctx.to_email)}" placeholder="agent@agency.com"></div>
+    <div class="mb-3"><label class="form-label">To Name</label><input class="form-control" id="em_to_name" value="${escAttr(ctx.to_name)}"></div>
+    <div class="mb-3"><label class="form-label">Subject *</label><input class="form-control" id="em_subject" value="${escAttr(ctx.subject)}"></div>
+    <div class="mb-3"><label class="form-label">Message Body *</label><textarea class="form-control" id="em_body" rows="10" style="font-family:monospace;font-size:.85rem">${esc(ctx.body)}</textarea></div>
+    <input type="hidden" id="em_sub_id" value="${escAttr(ctx.sub_id)}">
+    <input type="hidden" id="em_policy_id" value="${escAttr(ctx.policy_id)}">
+    <input type="hidden" id="em_type" value="${escAttr(ctx.template_type || 'custom')}">
     <div class="alert alert-info mb-0" style="font-size:.8rem"><i class="bi bi-info-circle me-1"></i>Emails are logged for compliance purposes. In production, configure SMTP settings to send real emails.</div>`;
 }
 
@@ -1254,10 +1254,10 @@ async function renderTemplates() {
             </h2>
             <div id="tmpl-body-${t.id}" class="accordion-collapse collapse ${i === 0 ? 'show' : ''}">
               <div class="accordion-body">
-                <div class="mb-2"><label class="form-label">Template Name</label><input class="form-control" id="ts_name_${t.id}" value="${t.name.replace(/"/g, '&quot;')}"></div>
-                <div class="mb-2"><label class="form-label">Subject</label><input class="form-control" id="ts_subject_${t.id}" value="${t.subject.replace(/"/g, '&quot;')}"></div>
+                <div class="mb-2"><label class="form-label">Template Name</label><input class="form-control" id="ts_name_${t.id}" value="${escAttr(t.name)}"></div>
+                <div class="mb-2"><label class="form-label">Subject</label><input class="form-control" id="ts_subject_${t.id}" value="${escAttr(t.subject)}"></div>
                 <div class="mb-3"><label class="form-label">Body <small class="text-muted">(available vars: {{sub_name}}, {{agent_name}}, {{gc_name}}, {{admin_name}}, {{gl_policy_number}}, {{wc_policy_number}})</small></label>
-                  <textarea class="form-control" id="ts_body_${t.id}" rows="12" style="font-family:monospace;font-size:.8rem">${t.body}</textarea>
+                  <textarea class="form-control" id="ts_body_${t.id}" rows="12" style="font-family:monospace;font-size:.8rem">${esc(t.body)}</textarea>
                 </div>
                 <button class="btn btn-sm btn-primary" onclick="saveTmpl(${t.id})"><i class="bi bi-save me-1"></i>Save Changes</button>
               </div>
@@ -1420,9 +1420,15 @@ async function checkExpirations() {
 
 // ==================== UTILITIES ====================
 function esc(str) {
+  if (!str) return '';
   const div = document.createElement('div');
-  div.textContent = str;
+  div.textContent = String(str);
   return div.innerHTML;
+}
+
+function escAttr(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function statusBadge(status) {
