@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InsureTrack – Subcontractor Compliance</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<style>
+:root{--primary:#1a3a5c;--primary-light:#2563a8;--sidebar-w:250px;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f4f8;min-height:100vh;}
+#login-page{min-height:100vh;background:linear-gradient(135deg,#1a3a5c 0%,#2563a8 100%);display:flex;align-items:center;justify-content:center;}
+.login-card{background:#fff;border-radius:16px;padding:2.5rem;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.login-logo{font-size:2rem;font-weight:800;color:var(--primary);letter-spacing:-1px;}
+.login-logo span{color:#e67e22;}
+#app-wrapper{display:none;height:100vh;overflow:hidden;}
+#sidebar{width:var(--sidebar-w);background:var(--primary);color:#fff;height:100vh;position:fixed;left:0;top:0;display:flex;flex-direction:column;z-index:100;overflow-y:auto;}
+.sidebar-logo{padding:1.25rem 1.5rem;border-bottom:1px solid rgba(255,255,255,.1);font-size:1.25rem;font-weight:800;letter-spacing:-.5px;}
+.sidebar-logo span{color:#e67e22;}
+.sidebar-nav{flex:1;padding:1rem 0;}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.7rem 1.5rem;color:rgba(255,255,255,.75);text-decoration:none;font-size:.875rem;font-weight:500;cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left;}
+.nav-item:hover,.nav-item.active{background:rgba(255,255,255,.12);color:#fff;}
+.nav-item i{font-size:1.1rem;width:20px;}
+.nav-section{padding:.5rem 1.5rem;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.4);margin-top:.5rem;}
+#main-area{margin-left:var(--sidebar-w);height:100vh;overflow-y:auto;display:flex;flex-direction:column;}
+.topbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:1.1rem;font-weight:700;color:#1e293b;}
+.content-area{padding:1.5rem;flex:1;}
+.stat-card{background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #e2e8f0;transition:transform .15s;}
+.stat-card:hover{transform:translateY(-2px);}
+.stat-num{font-size:2rem;font-weight:800;line-height:1;}
+.stat-label{font-size:.8rem;color:#64748b;font-weight:500;margin-top:.25rem;}
+.badge-active{background:#dcfce7;color:#166534;padding:.25rem .65rem;border-radius:99px;font-size:.75rem;font-weight:600;white-space:nowrap;}
+.badge-expiring{background:#fff3e0;color:#92400e;padding:.25rem .65rem;border-radius:99px;font-size:.75rem;font-weight:600;white-space:nowrap;}
+.badge-noncompliant{background:#fee2e2;color:#991b1b;padding:.25rem .65rem;border-radius:99px;font-size:.75rem;font-weight:600;white-space:nowrap;}
+.badge-pending{background:#f1f5f9;color:#475569;padding:.25rem .65rem;border-radius:99px;font-size:.75rem;font-weight:600;white-space:nowrap;}
+.card-it{background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;}
+.card-it-header{padding:1rem 1.25rem;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;}
+.card-it-header h6{margin:0;font-weight:700;font-size:.95rem;}
+.table th{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#64748b;border-bottom:2px solid #e2e8f0;}
+.table td{font-size:.875rem;vertical-align:middle;}
+.sub-row{cursor:pointer;}
+.sub-row:hover td{background:#f8fafc;}
+.policy-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:6px;font-size:.75rem;font-weight:600;}
+.policy-ok{background:#dcfce7;color:#166534;}
+.policy-warn{background:#fff3e0;color:#92400e;}
+.policy-bad{background:#fee2e2;color:#991b1b;}
+.policy-missing{background:#f1f5f9;color:#475569;}
+.form-label{font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.25rem;}
+.sidebar-badge{background:#ef4444;color:#fff;border-radius:99px;font-size:.65rem;font-weight:700;padding:.1rem .45rem;margin-left:auto;}
+.empty-state{text-align:center;padding:3rem;color:#94a3b8;}
+.empty-state i{font-size:3rem;display:block;margin-bottom:.75rem;}
+.progress-bar-it{height:6px;border-radius:3px;background:#e2e8f0;overflow:hidden;}
+.progress-fill{height:100%;border-radius:3px;transition:width .3s;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-page">
+  <div class="login-card">
+    <div class="login-logo mb-1">Insure<span>Track</span></div>
+    <p class="text-muted mb-4" style="font-size:.875rem">Subcontractor Insurance Compliance</p>
+    <div id="login-error" class="alert alert-danger d-none"></div>
+    <div class="mb-3"><label class="form-label">Email Address</label><input type="email" id="login-email" class="form-control" value="dawn@insuretrack.com"></div>
+    <div class="mb-4"><label class="form-label">Password</label><input type="password" id="login-password" class="form-control" value="admin123"></div>
+    <button class="btn btn-primary w-100 fw-bold" id="login-btn" style="background:var(--primary);border-color:var(--primary)">Sign In</button>
+    <div class="mt-4 p-3 rounded" style="background:#f0f4f8;font-size:.75rem">
+      <strong>Demo Accounts:</strong><br>
+      Admin: dawn@insuretrack.com / admin123<br>
+      GC: tom@apexbuilding.com / gc123<br>
+      Agent: mike@idahofirst.com / agent123
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-wrapper">
+  <div id="sidebar">
+    <div class="sidebar-logo">Insure<span>Track</span></div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <div style="padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,.1)">
+      <div style="font-size:.8rem;color:rgba(255,255,255,.6)" id="sidebar-user-info"></div>
+      <button class="btn btn-sm mt-2 w-100" style="background:rgba(255,255,255,.1);color:#fff;font-size:.75rem" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Sign Out</button>
+    </div>
+  </div>
+  <div id="main-area">
+    <div class="topbar">
+      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-sm position-relative" style="background:#f1f5f9;border:none" onclick="showPage('notifications')">
+          <i class="bi bi-bell fs-5"></i>
+          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notif-badge" style="display:none;font-size:.6rem"></span>
+        </button>
+        <div style="font-size:.85rem;font-weight:600;color:#374151" id="topbar-user"></div>
+      </div>
+    </div>
+    <div class="content-area" id="content-area"><div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div></div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal fade" id="subModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="subModalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="subModalBody"></div></div></div></div>
+<div class="modal fade" id="subFormModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="subFormTitle">Add Subcontractor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="subFormBody"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="saveSubcontractor()">Save</button></div></div></div></div>
+<div class="modal fade" id="policyModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="policyModalTitle">Add Policy</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="policyModalBody"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="policyFormSave">Save Policy</button></div></div></div></div>
+<div class="modal fade" id="emailModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Send Email</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="emailModalBody"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="sendEmail()"><i class="bi bi-send me-1"></i>Send Email</button></div></div></div></div>
+<div class="modal fade" id="gcFormModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="gcFormTitle">Add General Contractor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="gcFormBody"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="saveGC()">Save</button></div></div></div></div>
+<div class="modal fade" id="agentFormModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Add Insurance Agent</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="agentFormBody"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="saveAgent()">Save</button></div></div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+'use strict';
+
+// ==================== LOCAL DATABASE ====================
+const DB = {
+  get: t => JSON.parse(localStorage.getItem('it_' + t) || '[]'),
+  set: (t, d) => localStorage.setItem('it_' + t, JSON.stringify(d)),
+  nextId: t => { const r = DB.get(t); return r.length ? Math.max(...r.map(x => x.id)) + 1 : 1; },
+  insert: (t, item) => {
+    const rows = DB.get(t);
+    const id = DB.nextId(t);
+    const now = new Date().toISOString();
+    const rec = { id, created_at: now, updated_at: now, ...item };
+    rows.push(rec); DB.set(t, rows); return rec;
+  },
+  update: (t, id, updates) => {
+    const rows = DB.get(t);
+    const i = rows.findIndex(r => r.id === id);
+    if (i < 0) return null;
+    rows[i] = { ...rows[i], ...updates, updated_at: new Date().toISOString() };
+    DB.set(t, rows); return rows[i];
+  },
+  delete: (t, id) => DB.set(t, DB.get(t).filter(r => r.id !== id)),
+  find: (t, fn) => DB.get(t).filter(fn),
+  one: (t, fn) => DB.get(t).find(fn),
+  all: t => DB.get(t),
+};
+
+// ==================== SEED ====================
+function seedIfNeeded() {
+  if (DB.get('users').length > 0) return;
+  const now = new Date().toISOString().split('T')[0];
+  const d = n => { const x = new Date(); x.setDate(x.getDate() + n); return x.toISOString().split('T')[0]; };
+
+  DB.insert('users', { email:'dawn@insuretrack.com', password:'admin123', name:'Dawn Mitchell', role:'admin', phone:'208-555-0100', company:'InsureTrack Consulting' });
+  DB.insert('users', { email:'tom@apexbuilding.com', password:'gc123', name:'Tom Reynolds', role:'general_contractor', phone:'208-555-0201', company:'Apex Building Group' });
+  DB.insert('users', { email:'sarah@mountaincrest.com', password:'gc123', name:'Sarah Johnson', role:'general_contractor', phone:'208-555-0202', company:'Mountain Crest Construction' });
+  DB.insert('users', { email:'mike@idahofirst.com', password:'agent123', name:'Mike Torres', role:'insurance_agent', phone:'208-555-0301', company:'Idaho First Insurance' });
+  DB.insert('users', { email:'linda@statewidecoverage.com', password:'agent123', name:'Linda Park', role:'insurance_agent', phone:'208-555-0302', company:'Statewide Coverage' });
+
+  DB.insert('gcs', { user_id:2, company_name:'Apex Building Group', contact_name:'Tom Reynolds', email:'tom@apexbuilding.com', phone:'208-555-0201', address:'1234 Main St', city:'Boise', state:'ID', zip:'83701', license_number:'GC-2021-4567', require_additional_insured:true });
+  DB.insert('gcs', { user_id:3, company_name:'Mountain Crest Construction', contact_name:'Sarah Johnson', email:'sarah@mountaincrest.com', phone:'208-555-0202', address:'5678 Oak Ave', city:'Meridian', state:'ID', zip:'83642', license_number:'GC-2019-8901', require_additional_insured:false });
+
+  DB.insert('agents', { name:'Mike Torres', email:'mike@idahofirst.com', phone:'208-555-0301', agency_name:'Idaho First Insurance' });
+  DB.insert('agents', { name:'Linda Park', email:'linda@statewidecoverage.com', phone:'208-555-0302', agency_name:'Statewide Coverage' });
+  DB.insert('agents', { name:'Robert Chen', email:'robert@peakcoverage.com', phone:'208-555-0303', agency_name:'Peak Coverage Insurance' });
+
+  DB.insert('subs', { company_name:"Peak Electrical LLC", contact_name:'Carlos Rivera', email:'carlos@peakelectrical.com', phone:'208-555-0401', address:'789 Elm St', city:'Boise', state:'ID', zip:'83702', trade:'Electrical', is_sole_proprietor:false, w9_tax_id:'83-1234567', w9_entity_type:'LLC', w9_signature_date:'2024-01-15', w9_on_file:true, w9_year:2024, status:'active', notes:'' });
+  DB.insert('subs', { company_name:'Rocky Mountain Plumbing', contact_name:'Jim Taylor', email:'jim@rockymtnplumbing.com', phone:'208-555-0402', address:'321 Pine Ave', city:'Nampa', state:'ID', zip:'83651', trade:'Plumbing', is_sole_proprietor:false, w9_tax_id:'45-9876543', w9_entity_type:'Corporation', w9_signature_date:'2024-01-10', w9_on_file:true, w9_year:2024, status:'non_compliant', notes:'' });
+  DB.insert('subs', { company_name:"Dave's Drywall", contact_name:'Dave Kowalski', email:'dave@davesdrywall.com', phone:'208-555-0403', address:'654 Maple Dr', city:'Eagle', state:'ID', zip:'83616', trade:'Drywall', is_sole_proprietor:true, w9_tax_id:'', w9_entity_type:'', w9_signature_date:'', w9_on_file:false, w9_year:null, status:'pending', notes:'Sole proprietor - Idaho exemption may apply for workers comp' });
+  DB.insert('subs', { company_name:'Summit Roofing Inc', contact_name:'Brad Williams', email:'brad@summitroof.com', phone:'208-555-0404', address:'987 Cedar Ln', city:'Boise', state:'ID', zip:'83705', trade:'Roofing', is_sole_proprietor:false, w9_tax_id:'72-3456789', w9_entity_type:'Corporation', w9_signature_date:'2023-11-01', w9_on_file:true, w9_year:2023, status:'active', notes:'W9 needs renewal for 2024' });
+  DB.insert('subs', { company_name:'Clearwater HVAC', contact_name:'Amanda Foster', email:'amanda@clearwaterhvac.com', phone:'208-555-0405', address:'147 Birch Blvd', city:'Meridian', state:'ID', zip:'83642', trade:'HVAC', is_sole_proprietor:false, w9_tax_id:'61-5554321', w9_entity_type:'LLC', w9_signature_date:'2024-02-20', w9_on_file:true, w9_year:2024, status:'active', notes:'' });
+
+  // GC-Sub links
+  [[1,1],[1,2],[1,3],[1,4],[2,1],[2,4],[2,5]].forEach(([g,s]) => DB.insert('gc_subs', { gc_id:g, sub_id:s, is_active:true }));
+
+  // Policies
+  DB.insert('policies', { sub_id:1, agent_id:1, policy_type:'general_liability', policy_number:'GL-2024-PE001', carrier:'Liberty Mutual', coverage_amount:1000000, effective_date:'2024-01-01', expiration_date:d(365), status:'active', requires_additional_insured:true, additional_insured_confirmed:true, is_ghost_policy:false, certificate_on_file:true, last_verified_date:now, notes:'' });
+  DB.insert('policies', { sub_id:1, agent_id:1, policy_type:'workers_comp', policy_number:'WC-2024-PE001', carrier:'Liberty Mutual', coverage_amount:500000, effective_date:'2024-01-01', expiration_date:d(365), status:'active', requires_additional_insured:false, additional_insured_confirmed:false, is_ghost_policy:false, certificate_on_file:true, last_verified_date:now, notes:'' });
+  DB.insert('policies', { sub_id:2, agent_id:2, policy_type:'general_liability', policy_number:'GL-2024-RM001', carrier:'State Farm', coverage_amount:1000000, effective_date:'2023-06-01', expiration_date:d(22), status:'active', requires_additional_insured:true, additional_insured_confirmed:false, is_ghost_policy:false, certificate_on_file:true, last_verified_date:now, notes:'' });
+  DB.insert('policies', { sub_id:2, agent_id:2, policy_type:'workers_comp', policy_number:'WC-2024-RM001', carrier:'State Farm', coverage_amount:500000, effective_date:'2023-06-01', expiration_date:d(-15), status:'expired', requires_additional_insured:false, additional_insured_confirmed:false, is_ghost_policy:false, certificate_on_file:true, last_verified_date:null, notes:'' });
+  DB.insert('policies', { sub_id:4, agent_id:1, policy_type:'general_liability', policy_number:'GL-2024-SR001', carrier:'Travelers', coverage_amount:1000000, effective_date:'2024-01-01', expiration_date:d(265), status:'active', requires_additional_insured:true, additional_insured_confirmed:true, is_ghost_policy:false, certificate_on_file:true, last_verified_date:now, notes:'' });
+  DB.insert('policies', { sub_id:5, agent_id:3, policy_type:'general_liability', policy_number:'GL-2024-CH001', carrier:'Nationwide', coverage_amount:1000000, effective_date:'2024-04-01', expiration_date:d(58), status:'active', requires_additional_insured:false, additional_insured_confirmed:false, is_ghost_policy:false, certificate_on_file:true, last_verified_date:now, notes:'' });
+  DB.insert('policies', { sub_id:5, agent_id:3, policy_type:'workers_comp', policy_number:'WC-2024-CH001', carrier:'Nationwide', coverage_amount:500000, effective_date:'2024-04-01', expiration_date:d(58), status:'active', requires_additional_insured:false, additional_insured_confirmed:false, is_ghost_policy:false, certificate_on_file:true, last_verified_date:now, notes:'' });
+
+  DB.insert('templates', { template_type:'certificate_request', name:'Certificate Request', subject:'Certificate of Insurance Request – {{sub_name}}', body:`Dear {{agent_name}},\n\nI am writing on behalf of {{gc_name}} to request a current Certificate of Insurance for {{sub_name}}.\n\nRequired coverage minimums:\n  • General Liability: $1,000,000 per occurrence\n  • Workers' Compensation: Per state statute (min $500,000)\n\nPlease include {{gc_name}} as an Additional Insured on the GL policy.\n\nSend certificates to: compliance@insuretrack.com\n\nThank you,\n{{admin_name}}\nInsureTrack Compliance Services` });
+  DB.insert('templates', { template_type:'validation_request', name:'Policy Validation', subject:'Insurance Verification Request – {{sub_name}}', body:`Dear {{agent_name}},\n\nPlease confirm the following policies for {{sub_name}} are currently active:\n\n  • General Liability: Policy #{{gl_policy_number}}\n  • Workers' Compensation: Policy #{{wc_policy_number}}\n\nReply to confirm coverage status. If you are no longer the agent of record for {{sub_name}}, please advise.\n\nThank you,\n{{admin_name}}\nInsureTrack Compliance Services` });
+  DB.insert('templates', { template_type:'expiration_warning', name:'Expiration Warning', subject:'ACTION REQUIRED: Insurance Expiring in {{days_until_expiration}} Days – {{sub_name}}', body:`Dear {{agent_name}},\n\nThis is a reminder that the following policy for {{sub_name}} is expiring soon:\n\n  Policy Type: {{policy_type}}\n  Policy Number: {{policy_number}}\n  Expiration Date: {{expiration_date}}\n\nPlease provide a renewed certificate before the expiration date.\n\nSend to: compliance@insuretrack.com\n\nThank you,\n{{admin_name}}\nInsureTrack Compliance Services` });
+  DB.insert('templates', { template_type:'onboarding', name:'New Sub Onboarding', subject:"Welcome – Action Required for {{gc_name}} Compliance", body:`Dear {{sub_name}},\n\n{{gc_name}} has added you to their compliance portal.\n\nTo complete onboarding, please provide:\n  1. Completed and signed W-9\n  2. Certificate of Insurance:\n     • General Liability: $1,000,000 minimum\n     • Workers' Compensation: Per state statute\n\nSend documents to: compliance@insuretrack.com\n\nThank you,\n{{admin_name}}\nInsureTrack Compliance Services` });
+
+  DB.insert('notifications', { user_id:1, type:'expiration_warning', title:'Policy Expiring Soon', message:"Rocky Mountain Plumbing – General Liability expires in 22 days", related_type:'policy', related_id:3, is_read:false });
+  DB.insert('notifications', { user_id:1, type:'non_compliant', title:'Policy Expired', message:"Rocky Mountain Plumbing – Workers' Comp has expired", related_type:'policy', related_id:4, is_read:false });
+  DB.insert('notifications', { user_id:1, type:'pending_w9', title:'W9 Missing', message:"Dave's Drywall has not submitted a W9", related_type:'subcontractor', related_id:3, is_read:false });
+  DB.insert('notifications', { user_id:2, type:'expiration_warning', title:'Policy Expiring Soon', message:"Rocky Mountain Plumbing – General Liability expires in 22 days", related_type:'policy', related_id:3, is_read:false });
+}
+
+// ==================== HELPERS ====================
+function daysUntil(d) { if (!d) return null; return Math.ceil((new Date(d+' 12:00') - new Date()) / 86400000); }
+function fmtDate(d) { if (!d) return '—'; return new Date(d+' 12:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function fmtDT(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + new Date(d).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); }
+function maskTax(id) { return id ? id.replace(/\d(?=\d{4})/g,'*') : '—'; }
+function computeStatus(subId) {
+  const sub = DB.one('subs', s => s.id === subId);
+  if (!sub) return 'pending';
+  if (!sub.w9_on_file) return 'pending';
+  const policies = DB.find('policies', p => p.sub_id === subId);
+  if (policies.length === 0) return 'non_compliant';
+  if (policies.some(p => p.status === 'expired' || daysUntil(p.expiration_date) < 0)) return 'non_compliant';
+  if (policies.some(p => { const d = daysUntil(p.expiration_date); return d !== null && d <= 30 && d >= 0; })) return 'expiring_soon';
+  return 'active';
+}
+function statusBadge(s) {
+  return {active:'<span class="badge-active"><i class="bi bi-check-circle me-1"></i>Compliant</span>',expiring_soon:'<span class="badge-expiring"><i class="bi bi-exclamation-triangle me-1"></i>Expiring Soon</span>',non_compliant:'<span class="badge-noncompliant"><i class="bi bi-x-circle me-1"></i>Non-Compliant</span>',pending:'<span class="badge-pending"><i class="bi bi-clock me-1"></i>Pending</span>'}[s] || `<span class="badge-pending">${s}</span>`;
+}
+function policyBadge(policy, days) {
+  if (!policy) return '<span class="policy-badge policy-missing"><i class="bi bi-dash-circle me-1"></i>Missing</span>';
+  if (policy.status === 'expired' || (days !== null && days < 0)) return '<span class="policy-badge policy-bad"><i class="bi bi-x-circle me-1"></i>Expired</span>';
+  if (days !== null && days <= 30) return `<span class="policy-badge policy-warn"><i class="bi bi-exclamation-triangle me-1"></i>${days}d left</span>`;
+  return '<span class="policy-badge policy-ok"><i class="bi bi-check-circle me-1"></i>Active</span>';
+}
+
+// ==================== STATE ====================
+let AUTH = { user: null };
+let currentPage = 'dashboard';
+let editingSubId = null;
+let editingGCId = null;
+let _currentSubId = null;
+const _policyCache = {};
+const _agentCache = {};
+
+// ==================== AUTH ====================
+function login(email, password) {
+  const user = DB.one('users', u => u.email.toLowerCase() === email.toLowerCase().trim() && u.password === password);
+  if (!user) return null;
+  let gcId = null;
+  if (user.role === 'general_contractor') {
+    const gc = DB.one('gcs', g => g.user_id === user.id);
+    gcId = gc ? gc.id : null;
+  }
+  return { ...user, gcId };
+}
+function logout() {
+  AUTH = { user: null };
+  sessionStorage.removeItem('it_session');
+  document.getElementById('app-wrapper').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+}
+
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('login-password').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+function doLogin() {
+  const e = document.getElementById('login-email').value;
+  const p = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  err.classList.add('d-none');
+  const user = login(e, p);
+  if (!user) { err.textContent = 'Invalid email or password'; err.classList.remove('d-none'); return; }
+  AUTH.user = user;
+  sessionStorage.setItem('it_session', JSON.stringify(user));
+  startApp();
+}
+
+// ==================== APP ====================
+function startApp() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app-wrapper').style.display = 'flex';
+  buildSidebar();
+  document.getElementById('topbar-user').textContent = AUTH.user.name;
+  document.getElementById('sidebar-user-info').innerHTML = `<div style="font-weight:600">${AUTH.user.name}</div><div style="font-size:.7rem;opacity:.7">${AUTH.user.role.replace(/_/g,' ')}</div>`;
+  refreshNotifBadge();
+  showPage('dashboard');
+}
+
+function buildSidebar() {
+  const role = AUTH.user.role;
+  const items = [];
+  if (role === 'admin') {
+    items.push({id:'dashboard',icon:'bi-grid-1x2',label:'Dashboard'});
+    items.push({section:'MANAGEMENT'});
+    items.push({id:'subcontractors',icon:'bi-people',label:'Subcontractors'});
+    items.push({id:'general-contractors',icon:'bi-building',label:'General Contractors'});
+    items.push({id:'insurance-agents',icon:'bi-shield-check',label:'Insurance Agents'});
+    items.push({section:'COMMUNICATIONS'});
+    items.push({id:'emails',icon:'bi-envelope',label:'Email Log'});
+    items.push({id:'templates',icon:'bi-file-text',label:'Email Templates'});
+    items.push({section:'REPORTING'});
+    items.push({id:'reports',icon:'bi-bar-chart',label:'Compliance Report'});
+    items.push({id:'notifications',icon:'bi-bell',label:'Notifications',badge:true});
+  } else if (role === 'general_contractor') {
+    items.push({id:'dashboard',icon:'bi-grid-1x2',label:'Dashboard'});
+    items.push({section:'MY SUBS'});
+    items.push({id:'subcontractors',icon:'bi-people',label:'My Subcontractors'});
+    items.push({id:'notifications',icon:'bi-bell',label:'Notifications',badge:true});
+  } else {
+    items.push({id:'dashboard',icon:'bi-grid-1x2',label:'Dashboard'});
+    items.push({id:'notifications',icon:'bi-bell',label:'Notifications',badge:true});
+  }
+  document.getElementById('sidebar-nav').innerHTML = items.map(it => {
+    if (it.section) return `<div class="nav-section">${it.section}</div>`;
+    return `<button class="nav-item" id="nav-${it.id}" onclick="showPage('${it.id}')"><i class="bi ${it.icon}"></i> ${it.label}${it.badge ? '<span class="sidebar-badge d-none" id="notif-sidebar-badge"></span>' : ''}</button>`;
+  }).join('');
+}
+
+function setActive(page) { document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active')); document.getElementById('nav-'+page)?.classList.add('active'); }
+
+function showPage(page) {
+  currentPage = page;
+  setActive(page);
+  const titles = {dashboard:'Dashboard',subcontractors:'Subcontractors','general-contractors':'General Contractors','insurance-agents':'Insurance Agents',emails:'Email Log',templates:'Email Templates',reports:'Compliance Report',notifications:'Notifications'};
+  document.getElementById('page-title').textContent = titles[page] || page;
+  const area = document.getElementById('content-area');
+  area.innerHTML = '<div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>';
+  setTimeout(() => {
+    try {
+      if (page === 'dashboard') renderDashboard();
+      else if (page === 'subcontractors') renderSubcontractors();
+      else if (page === 'general-contractors') renderGCs();
+      else if (page === 'insurance-agents') renderAgents();
+      else if (page === 'emails') renderEmails();
+      else if (page === 'templates') renderTemplates();
+      else if (page === 'reports') renderReports();
+      else if (page === 'notifications') renderNotifications();
+    } catch(e) { area.innerHTML = `<div class="alert alert-danger">Error: ${e.message}</div>`; console.error(e); }
+  }, 50);
+}
+
+// ==================== DASHBOARD ====================
+function renderDashboard() {
+  const area = document.getElementById('content-area');
+  const role = AUTH.user.role;
+
+  if (role === 'admin') {
+    const allSubs = DB.all('subs');
+    let active=0, expiringSoon=0, nonCompliant=0, pending=0;
+    allSubs.forEach(s => { const st=computeStatus(s.id); if(st==='active')active++; else if(st==='expiring_soon')expiringSoon++; else if(st==='non_compliant')nonCompliant++; else pending++; });
+    const today = new Date().toISOString().split('T')[0];
+    const future = new Date(); future.setDate(future.getDate()+30); const fut = future.toISOString().split('T')[0];
+    const expiringPolicies = DB.find('policies', p => p.expiration_date >= today && p.expiration_date <= fut && p.status !== 'expired')
+      .map(p => { _policyCache[p.id]=p; const s=DB.one('subs',x=>x.id===p.sub_id); const a=DB.one('agents',x=>x.id===p.agent_id); return {...p,sub_name:s?.company_name||'',agent_name:a?.name||'',agent_email:a?.email||''}; });
+    const recentEmails = DB.find('email_log', e => new Date(e.created_at) > new Date(Date.now()-7*86400000)).length;
+
+    area.innerHTML = `
+    <div class="row g-3 mb-4">
+      <div class="col-md-3"><div class="stat-card"><div class="stat-num text-primary">${allSubs.length}</div><div class="stat-label"><i class="bi bi-people me-1"></i>Total Subcontractors</div></div></div>
+      <div class="col-md-3"><div class="stat-card"><div class="stat-num" style="color:#166534">${active}</div><div class="stat-label"><i class="bi bi-check-circle me-1"></i>Fully Compliant</div></div></div>
+      <div class="col-md-3"><div class="stat-card"><div class="stat-num" style="color:#92400e">${expiringSoon}</div><div class="stat-label"><i class="bi bi-exclamation-triangle me-1"></i>Expiring in 30 Days</div></div></div>
+      <div class="col-md-3"><div class="stat-card"><div class="stat-num" style="color:#991b1b">${nonCompliant}</div><div class="stat-label"><i class="bi bi-x-circle me-1"></i>Non-Compliant</div></div></div>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-4"><div class="stat-card"><div class="stat-num text-secondary">${pending}</div><div class="stat-label"><i class="bi bi-clock me-1"></i>Pending Onboarding</div></div></div>
+      <div class="col-md-4"><div class="stat-card"><div class="stat-num" style="color:var(--primary)">${DB.all('gcs').length}</div><div class="stat-label"><i class="bi bi-building me-1"></i>General Contractors</div></div></div>
+      <div class="col-md-4"><div class="stat-card"><div class="stat-num" style="color:var(--primary)">${recentEmails}</div><div class="stat-label"><i class="bi bi-envelope me-1"></i>Emails Sent (7 days)</div></div></div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-7"><div class="card-it">
+        <div class="card-it-header"><h6><i class="bi bi-exclamation-triangle text-warning me-2"></i>Policies Expiring Within 30 Days</h6><button class="btn btn-sm btn-outline-primary" onclick="showPage('reports')">View All</button></div>
+        <div class="p-0">${expiringPolicies.length===0?'<div class="empty-state"><i class="bi bi-check-circle text-success"></i>No policies expiring soon</div>':`
+          <table class="table table-hover mb-0">
+            <thead><tr><th>Subcontractor</th><th>Policy Type</th><th>Expires</th><th>Days</th><th>Agent</th><th></th></tr></thead>
+            <tbody>${expiringPolicies.map(p=>`<tr>
+              <td><strong>${p.sub_name}</strong></td>
+              <td>${p.policy_type==='general_liability'?'General Liability':"Workers' Comp"}</td>
+              <td>${fmtDate(p.expiration_date)}</td>
+              <td><span class="badge-expiring">${daysUntil(p.expiration_date)}d</span></td>
+              <td style="font-size:.8rem">${p.agent_name||'—'}</td>
+              <td><button class="btn btn-sm btn-outline-warning py-0 px-2" onclick="openEmailForPolicyId(${p.id})" style="font-size:.7rem">Email Agent</button></td>
+            </tr>`).join('')}</tbody>
+          </table>`}
+        </div>
+      </div></div>
+      <div class="col-md-5"><div class="card-it">
+        <div class="card-it-header"><h6><i class="bi bi-pie-chart me-2"></i>Compliance Overview</h6></div>
+        <div class="p-3">
+          ${bar('Compliant',active,allSubs.length,'#166534','#dcfce7')}
+          ${bar('Expiring Soon',expiringSoon,allSubs.length,'#92400e','#fff3e0')}
+          ${bar('Non-Compliant',nonCompliant,allSubs.length,'#991b1b','#fee2e2')}
+          ${bar('Pending',pending,allSubs.length,'#475569','#f1f5f9')}
+          <div class="mt-3 pt-3 border-top d-flex gap-2 flex-wrap">
+            <button class="btn btn-sm btn-primary" onclick="showPage('subcontractors')"><i class="bi bi-people me-1"></i>Manage Subs</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="checkExpirations()"><i class="bi bi-arrow-clockwise me-1"></i>Check Expirations</button>
+          </div>
+        </div>
+      </div></div>
+    </div>`;
+
+  } else if (role === 'general_contractor') {
+    const gc = DB.one('gcs', g => g.user_id === AUTH.user.id);
+    if (!gc) { area.innerHTML = '<div class="alert alert-warning">No GC profile found. Contact your administrator.</div>'; return; }
+    const links = DB.find('gc_subs', l => l.gc_id === gc.id && l.is_active);
+    const subs = links.map(l => DB.one('subs', s => s.id === l.sub_id)).filter(Boolean);
+    let active=0,expiringSoon=0,nonCompliant=0,pending=0;
+    subs.forEach(s => { const st=computeStatus(s.id); if(st==='active')active++; else if(st==='expiring_soon')expiringSoon++; else if(st==='non_compliant')nonCompliant++; else pending++; });
+    area.innerHTML = `
+      <div class="mb-3"><h5 class="mb-0">${gc.company_name} <span class="text-muted fw-normal fs-6">– Compliance Overview</span></h5></div>
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-num text-primary">${subs.length}</div><div class="stat-label">Total Subs</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-num" style="color:#166534">${active}</div><div class="stat-label">Compliant</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-num" style="color:#92400e">${expiringSoon}</div><div class="stat-label">Expiring Soon</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-num" style="color:#991b1b">${nonCompliant}</div><div class="stat-label">Non-Compliant</div></div></div>
+      </div>
+      <div class="card-it">
+        <div class="card-it-header"><h6>My Subcontractors</h6><button class="btn btn-sm btn-primary" onclick="showPage('subcontractors')">Manage All</button></div>
+        <table class="table table-hover mb-0"><thead><tr><th>Company</th><th>Trade</th><th>Status</th><th>W9</th></tr></thead>
+        <tbody>${subs.map(s=>`<tr class="sub-row" onclick="openSubDetail(${s.id})">
+          <td><strong>${s.company_name}</strong><br><small class="text-muted">${s.contact_name}</small></td>
+          <td>${s.trade||'—'}</td><td>${statusBadge(computeStatus(s.id))}</td>
+          <td>${s.w9_on_file?'<i class="bi bi-check-circle-fill text-success"></i>':'<i class="bi bi-exclamation-circle-fill text-warning"></i>'}</td>
+        </tr>`).join('')}</tbody></table>
+      </div>`;
+  } else {
+    area.innerHTML = `<div class="alert alert-info">Welcome, ${AUTH.user.name}. Contact your administrator for access.</div>`;
+  }
+}
+
+function bar(label, val, total, color, bg) {
+  const pct = total>0 ? Math.round(val/total*100) : 0;
+  return `<div class="mb-3"><div class="d-flex justify-content-between mb-1"><span style="font-size:.8rem;font-weight:600">${label}</span><span style="font-size:.8rem;color:${color};font-weight:700">${val} (${pct}%)</span></div><div class="progress-bar-it"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div></div>`;
+}
+
+// ==================== SUBCONTRACTORS ====================
+function renderSubcontractors() {
+  const role = AUTH.user.role;
+  let subs;
+  if (role === 'general_contractor') {
+    const gc = DB.one('gcs', g => g.user_id === AUTH.user.id);
+    if (!gc) { document.getElementById('content-area').innerHTML = '<div class="empty-state"><i class="bi bi-person-x"></i>No GC profile found.</div>'; return; }
+    const links = DB.find('gc_subs', l => l.gc_id === gc.id && l.is_active);
+    subs = links.map(l => DB.one('subs', s => s.id === l.sub_id)).filter(Boolean);
+  } else { subs = DB.all('subs'); }
+
+  const gcs = DB.all('gcs');
+  window._subs = subs.map(s => {
+    const policies = DB.find('policies', p => p.sub_id === s.id);
+    const gl = policies.find(p => p.policy_type === 'general_liability');
+    const wc = policies.find(p => p.policy_type === 'workers_comp');
+    return { ...s, computed_status: computeStatus(s.id), gl_policy: gl||null, wc_policy: wc||null, gl_days: gl?daysUntil(gl.expiration_date):null, wc_days: wc?daysUntil(wc.expiration_date):null };
+  });
+
+  document.getElementById('content-area').innerHTML = `<div class="card-it">
+    <div class="card-it-header">
+      <h6><i class="bi bi-people me-2"></i>Subcontractors (${subs.length})</h6>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <input type="text" class="form-control form-control-sm" placeholder="Search..." id="subSearch" oninput="filterSubs()" style="width:170px">
+        ${role==='admin'?`<select class="form-select form-select-sm" id="gcFilterSel" onchange="filterSubs()" style="width:170px"><option value="">All GCs</option>${gcs.map(g=>`<option value="${g.id}">${g.company_name}</option>`).join('')}</select>`:'' }
+        <select class="form-select form-select-sm" id="statusFilterSel" onchange="filterSubs()" style="width:150px"><option value="">All Status</option><option value="active">Compliant</option><option value="expiring_soon">Expiring Soon</option><option value="non_compliant">Non-Compliant</option><option value="pending">Pending</option></select>
+        ${role==='admin'?'<button class="btn btn-sm btn-primary" onclick="openAddSub()"><i class="bi bi-plus-lg me-1"></i>Add Sub</button>':''}
+      </div>
+    </div>
+    <div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Company / Contact</th><th>Trade</th><th>Status</th><th>W9</th><th>General Liability</th><th>Workers' Comp</th><th></th></tr></thead><tbody id="subTbody"></tbody></table></div>
+  </div>`;
+  filterSubs();
+}
+
+function filterSubs() {
+  const search = (document.getElementById('subSearch')?.value||'').toLowerCase();
+  const statusF = document.getElementById('statusFilterSel')?.value||'';
+  const gcF = parseInt(document.getElementById('gcFilterSel')?.value||'0')||0;
+  let subs = window._subs||[];
+  if (gcF) {
+    const links = DB.find('gc_subs', l => l.gc_id === gcF && l.is_active).map(l => l.sub_id);
+    subs = subs.filter(s => links.includes(s.id));
+  }
+  if (search) subs = subs.filter(s => (s.company_name+s.contact_name+(s.trade||'')).toLowerCase().includes(search));
+  if (statusF) subs = subs.filter(s => s.computed_status === statusF);
+  const tbody = document.getElementById('subTbody');
+  if (!tbody) return;
+  if (!subs.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-search"></i>No subcontractors found</div></td></tr>'; return; }
+  tbody.innerHTML = subs.map(s => `<tr class="sub-row" onclick="openSubDetail(${s.id})">
+    <td><strong>${s.company_name}</strong><br><small class="text-muted">${s.contact_name}${s.is_sole_proprietor?' <span class="badge bg-secondary" style="font-size:.65rem">Sole Prop</span>':''}</small></td>
+    <td>${s.trade||'—'}</td>
+    <td>${statusBadge(s.computed_status)}</td>
+    <td class="text-center">${s.w9_on_file?`<i class="bi bi-check-circle-fill text-success" title="W9 on file (${s.w9_year})"></i>`:'<i class="bi bi-exclamation-circle-fill text-warning" title="W9 missing"></i>'}</td>
+    <td>${policyBadge(s.gl_policy,s.gl_days)}</td>
+    <td>${policyBadge(s.wc_policy,s.wc_days)}</td>
+    <td onclick="event.stopPropagation()"><div class="dropdown"><button class="btn btn-sm btn-outline-secondary py-0 px-2" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button><ul class="dropdown-menu dropdown-menu-end">
+      <li><a class="dropdown-item" href="#" onclick="openSubDetail(${s.id})"><i class="bi bi-eye me-2"></i>View</a></li>
+      ${AUTH.user.role==='admin'?`<li><a class="dropdown-item" href="#" onclick="openEditSub(${s.id})"><i class="bi bi-pencil me-2"></i>Edit</a></li><li><a class="dropdown-item" href="#" onclick="openEmailComposer(${s.id})"><i class="bi bi-envelope me-2"></i>Send Email</a></li>`:''}
+    </ul></div></td>
+  </tr>`).join('');
+}
+
+// ==================== SUB DETAIL ====================
+function openSubDetail(subId) {
+  _currentSubId = subId;
+  const sub = DB.one('subs', s => s.id === subId);
+  if (!sub) return;
+  const policies = DB.find('policies', p => p.sub_id === subId).map(p => { _policyCache[p.id]=p; const a=DB.one('agents',x=>x.id===p.agent_id); return {...p, agent_name:a?.name||'', agent_email:a?.email||'', agency_name:a?.agency_name||'', days_remaining:daysUntil(p.expiration_date)}; });
+  const gcLinks = DB.find('gc_subs', l => l.sub_id===subId && l.is_active).map(l => DB.one('gcs', g=>g.id===l.gc_id)).filter(Boolean);
+  const gl = policies.find(p=>p.policy_type==='general_liability');
+  const wc = policies.find(p=>p.policy_type==='workers_comp');
+  const st = computeStatus(subId);
+  document.getElementById('subModalTitle').innerHTML = `${sub.company_name} <small class="text-muted fs-6">${sub.trade||''}</small>`;
+  document.getElementById('subModalBody').innerHTML = `
+    <ul class="nav nav-tabs mb-3">
+      <li class="nav-item"><button class="nav-link active" data-bs-target="#tab-ov" data-bs-toggle="tab">Overview</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-target="#tab-pol" data-bs-toggle="tab">Policies (${policies.length})</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-target="#tab-w9" data-bs-toggle="tab">W9 Info</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-target="#tab-gcs" data-bs-toggle="tab">GCs (${gcLinks.length})</button></li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="tab-ov">
+        <div class="row g-3">
+          <div class="col-md-4"><div class="p-3 rounded" style="background:#f8fafc;border:1px solid #e2e8f0">
+            <div class="fw-bold mb-2">Contact</div>
+            <div class="mb-1"><i class="bi bi-person text-muted me-1"></i>${sub.contact_name}</div>
+            <div class="mb-1"><i class="bi bi-envelope text-muted me-1"></i><a href="mailto:${sub.email}">${sub.email}</a></div>
+            <div class="mb-1"><i class="bi bi-telephone text-muted me-1"></i>${sub.phone||'—'}</div>
+            <div class="mb-1"><i class="bi bi-geo-alt text-muted me-1"></i>${[sub.address,sub.city,sub.state,sub.zip].filter(Boolean).join(', ')||'—'}</div>
+            ${sub.is_sole_proprietor?'<div class="mt-2"><span class="badge bg-warning text-dark">Sole Proprietor</span></div>':''}
+          </div></div>
+          <div class="col-md-4"><div class="p-3 rounded" style="background:#f8fafc;border:1px solid #e2e8f0">
+            <div class="fw-bold mb-2">Compliance</div>
+            <div class="mb-2">${statusBadge(st)}</div>
+            <div class="mb-1 d-flex justify-content-between"><span style="font-size:.8rem">GL:</span>${policyBadge(gl,gl?.days_remaining)}</div>
+            <div class="mb-1 d-flex justify-content-between"><span style="font-size:.8rem">WC:</span>${policyBadge(wc,wc?.days_remaining)}</div>
+            <div class="mb-1 d-flex justify-content-between"><span style="font-size:.8rem">W9:</span>${sub.w9_on_file?`<span class="badge-active">Yes (${sub.w9_year})</span>`:'<span class="badge-noncompliant">Missing</span>'}</div>
+          </div></div>
+          <div class="col-md-4"><div class="p-3 rounded" style="background:#f8fafc;border:1px solid #e2e8f0">
+            <div class="fw-bold mb-2">Quick Actions</div>
+            ${AUTH.user.role==='admin'?`
+            <button class="btn btn-sm btn-outline-primary w-100 mb-2" onclick="openEmailComposer(${sub.id});bootstrap.Modal.getInstance(document.getElementById('subModal')).hide()"><i class="bi bi-envelope me-1"></i>Send Email</button>
+            <button class="btn btn-sm btn-outline-secondary w-100 mb-2" onclick="openAddPolicy(${sub.id})"><i class="bi bi-plus-circle me-1"></i>Add Policy</button>
+            <button class="btn btn-sm btn-outline-secondary w-100" onclick="openEditSub(${sub.id});bootstrap.Modal.getInstance(document.getElementById('subModal')).hide()"><i class="bi bi-pencil me-1"></i>Edit Info</button>`:''}
+          </div></div>
+        </div>
+        ${sub.notes?`<div class="alert alert-info mt-3 mb-0"><i class="bi bi-info-circle me-2"></i>${sub.notes}</div>`:''}
+      </div>
+      <div class="tab-pane fade" id="tab-pol">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="text-muted" style="font-size:.875rem">${policies.length} polic${policies.length===1?'y':'ies'}</span>
+          ${AUTH.user.role==='admin'?`<button class="btn btn-sm btn-primary" onclick="openAddPolicy(${sub.id})"><i class="bi bi-plus-lg me-1"></i>Add Policy</button>`:''}
+        </div>
+        ${policies.length===0?'<div class="empty-state"><i class="bi bi-shield-x"></i>No policies on file</div>':policies.map(p=>renderPolicyCard(p,sub)).join('')}
+      </div>
+      <div class="tab-pane fade" id="tab-w9">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <table class="table table-sm">
+              <tr><th style="width:45%">W9 on File</th><td>${sub.w9_on_file?'<span class="badge-active">Yes</span>':'<span class="badge-noncompliant">No</span>'}</td></tr>
+              <tr><th>Year</th><td>${sub.w9_year||'—'}</td></tr>
+              <tr><th>Tax ID</th><td>${maskTax(sub.w9_tax_id)}</td></tr>
+              <tr><th>Entity Type</th><td>${sub.w9_entity_type||'—'}</td></tr>
+              <tr><th>Signature Date</th><td>${fmtDate(sub.w9_signature_date)}</td></tr>
+              <tr><th>Sole Proprietor</th><td>${sub.is_sole_proprietor?'Yes':'No'}</td></tr>
+            </table>
+          </div>
+          <div class="col-md-6">
+            <div class="alert ${sub.w9_on_file?'alert-success':'alert-warning'}">
+              ${sub.w9_on_file?`<i class="bi bi-check-circle me-2"></i>W9 received for ${sub.w9_year}.${sub.w9_year<new Date().getFullYear()?' <strong>Note:</strong> Consider requesting renewal for current year.':''}`:'<i class="bi bi-exclamation-triangle me-2"></i><strong>W9 Required:</strong> Must be submitted before payment can be processed.'}
+            </div>
+            ${sub.is_sole_proprietor?'<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i><strong>Sole Proprietor:</strong> Idaho sole proprietors may be exempt from Workers\' Comp. However the GC may be liable in an audit. Consider requiring a ghost policy.</div>':''}
+          </div>
+        </div>
+      </div>
+      <div class="tab-pane fade" id="tab-gcs">
+        ${gcLinks.length===0?'<div class="empty-state"><i class="bi bi-building"></i>Not linked to any GCs</div>':`<table class="table table-sm"><thead><tr><th>Company</th><th>Contact</th><th>Email</th><th>License</th></tr></thead><tbody>${gcLinks.map(gc=>`<tr><td><strong>${gc.company_name}</strong></td><td>${gc.contact_name||'—'}</td><td>${gc.email||'—'}</td><td>${gc.license_number||'—'}</td></tr>`).join('')}</tbody></table>`}
+      </div>
+    </div>`;
+  new bootstrap.Modal(document.getElementById('subModal')).show();
+}
+
+function renderPolicyCard(p, sub) {
+  const days = p.days_remaining;
+  const expired = p.status==='expired'||(days!==null&&days<0);
+  const expiring = !expired&&days!==null&&days<=30;
+  const border = expired?'#dc3545':expiring?'#fd7e14':'#198754';
+  const label = {general_liability:'General Liability',workers_comp:"Workers' Compensation",auto:'Commercial Auto'}[p.policy_type]||p.policy_type;
+  return `<div class="card mb-3" style="border-left:4px solid ${border}"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+      <div><h6 class="mb-0">${label} ${p.is_ghost_policy?'<span class="badge bg-secondary">Ghost Policy</span>':''}</h6><small class="text-muted">${p.carrier||'Carrier unknown'} ${p.policy_number?'• '+p.policy_number:''}</small></div>
+      <div>${expired?'<span class="badge-noncompliant">EXPIRED</span>':expiring?`<span class="badge-expiring">${days} days left</span>`:'<span class="badge-active">Active</span>'}</div>
+    </div>
+    <div class="row g-2" style="font-size:.8rem">
+      <div class="col-4"><div class="text-muted">Coverage</div><div class="fw-bold">${p.coverage_amount?'$'+p.coverage_amount.toLocaleString():'—'}</div></div>
+      <div class="col-4"><div class="text-muted">Effective</div><div>${fmtDate(p.effective_date)}</div></div>
+      <div class="col-4"><div class="text-muted">Expires</div><div class="${expired?'text-danger fw-bold':expiring?'text-warning fw-bold':''}">${fmtDate(p.expiration_date)}</div></div>
+      <div class="col-4"><div class="text-muted">Certificate</div><div>${p.certificate_on_file?'<i class="bi bi-check-circle text-success"></i> On file':'<i class="bi bi-x-circle text-danger"></i> Missing'}</div></div>
+      <div class="col-4"><div class="text-muted">Addl. Insured</div><div>${p.requires_additional_insured?(p.additional_insured_confirmed?'<i class="bi bi-check-circle text-success"></i> Confirmed':'<i class="bi bi-exclamation-circle text-warning"></i> Required'):'Not required'}</div></div>
+      <div class="col-4"><div class="text-muted">Last Verified</div><div>${p.last_verified_date?fmtDate(p.last_verified_date):'<span class="text-muted">Never</span>'}</div></div>
+    </div>
+    ${p.agent_name?`<div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+      <div style="font-size:.8rem"><i class="bi bi-person-badge text-muted me-1"></i><strong>${p.agent_name}</strong> – ${p.agency_name} <a href="mailto:${p.agent_email}">${p.agent_email}</a></div>
+      ${AUTH.user.role==='admin'?`<div class="d-flex gap-1">
+        <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="verifyPolicy(${p.id},${sub.id})" style="font-size:.7rem"><i class="bi bi-check2"></i> Verify</button>
+        <button class="btn btn-sm btn-outline-warning py-0 px-2" onclick="openEmailForPolicyId(${p.id})" style="font-size:.7rem"><i class="bi bi-envelope"></i></button>
+        <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="openEditPolicy(${p.id},${sub.id})" style="font-size:.7rem"><i class="bi bi-pencil"></i></button>
+      </div>`:''}
+    </div>`:AUTH.user.role==='admin'?`<div class="mt-2 pt-2 border-top d-flex gap-1">
+      <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="verifyPolicy(${p.id},${sub.id})" style="font-size:.7rem"><i class="bi bi-check2"></i> Verify</button>
+      <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="openEditPolicy(${p.id},${sub.id})" style="font-size:.7rem"><i class="bi bi-pencil"></i></button>
+    </div>`:''}
+  </div></div>`;
+}
+
+// ==================== ADD/EDIT SUB ====================
+function openAddSub() { editingSubId=null; document.getElementById('subFormTitle').textContent='Add Subcontractor'; document.getElementById('subFormBody').innerHTML=subForm({}); new bootstrap.Modal(document.getElementById('subFormModal')).show(); }
+function openEditSub(id) { editingSubId=id; document.getElementById('subFormTitle').textContent='Edit Subcontractor'; document.getElementById('subFormBody').innerHTML=subForm(DB.one('subs',s=>s.id===id)||{}); new bootstrap.Modal(document.getElementById('subFormModal')).show(); }
+function subForm(s) {
+  const gcs = DB.all('gcs');
+  return `<div class="row g-3">
+    <div class="col-md-6"><label class="form-label">Company Name *</label><input class="form-control" id="sf_company" value="${s.company_name||''}"></div>
+    <div class="col-md-6"><label class="form-label">Contact Name *</label><input class="form-control" id="sf_contact" value="${s.contact_name||''}"></div>
+    <div class="col-md-6"><label class="form-label">Email *</label><input type="email" class="form-control" id="sf_email" value="${s.email||''}"></div>
+    <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" id="sf_phone" value="${s.phone||''}"></div>
+    <div class="col-md-6"><label class="form-label">Trade</label><input class="form-control" id="sf_trade" value="${s.trade||''}" placeholder="Electrical, Plumbing..."></div>
+    ${!editingSubId?`<div class="col-md-6"><label class="form-label">Link to General Contractor</label><select class="form-select" id="sf_gc"><option value="">— None —</option>${gcs.map(g=>`<option value="${g.id}">${g.company_name}</option>`).join('')}</select></div>`:'<div class="col-md-6"></div>'}
+    <div class="col-12"><input class="form-control" id="sf_address" placeholder="Address" value="${s.address||''}"></div>
+    <div class="col-md-5"><input class="form-control" id="sf_city" placeholder="City" value="${s.city||'Boise'}"></div>
+    <div class="col-md-3"><input class="form-control" id="sf_state" placeholder="ST" value="${s.state||'ID'}" maxlength="2"></div>
+    <div class="col-md-4"><input class="form-control" id="sf_zip" placeholder="ZIP" value="${s.zip||''}"></div>
+    <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="sf_sole" ${s.is_sole_proprietor?'checked':''}><label class="form-check-label" for="sf_sole">Sole Proprietor (Idaho WC exemption may apply)</label></div></div>
+    <div class="col-12"><hr class="my-1"><label class="fw-bold text-muted" style="font-size:.8rem">W9 INFORMATION</label></div>
+    <div class="col-md-4"><label class="form-label">Tax ID (EIN/SSN)</label><input class="form-control" id="sf_taxid" value="${s.w9_tax_id||''}" placeholder="XX-XXXXXXX"></div>
+    <div class="col-md-4"><label class="form-label">Entity Type</label><select class="form-select" id="sf_entity">${['','Individual/Sole Proprietor','C Corporation','S Corporation','Partnership','LLC - Single Member','LLC - Partnership','LLC - C Corp','LLC - S Corp'].map(e=>`<option value="${e}" ${s.w9_entity_type===e?'selected':''}>${e||'— Select —'}</option>`).join('')}</select></div>
+    <div class="col-md-4"><label class="form-label">Signature Date</label><input type="date" class="form-control" id="sf_sigdate" value="${s.w9_signature_date||''}"></div>
+    <div class="col-md-4"><label class="form-label">W9 Year</label><input type="number" class="form-control" id="sf_w9yr" value="${s.w9_year||new Date().getFullYear()}"></div>
+    <div class="col-md-8 d-flex align-items-end"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="sf_w9file" ${s.w9_on_file?'checked':''}><label class="form-check-label" for="sf_w9file">W9 is on file</label></div></div>
+    <div class="col-12"><label class="form-label">Notes</label><textarea class="form-control" id="sf_notes" rows="2">${s.notes||''}</textarea></div>
+  </div>`;
+}
+
+function saveSubcontractor() {
+  const company_name = document.getElementById('sf_company').value.trim();
+  const contact_name = document.getElementById('sf_contact').value.trim();
+  const email = document.getElementById('sf_email').value.trim();
+  if (!company_name||!contact_name||!email) { alert('Company name, contact name, and email are required'); return; }
+  const data = { company_name, contact_name, email, phone: document.getElementById('sf_phone').value.trim(), trade: document.getElementById('sf_trade').value.trim(), address: document.getElementById('sf_address').value.trim(), city: document.getElementById('sf_city').value.trim(), state: document.getElementById('sf_state').value.trim(), zip: document.getElementById('sf_zip').value.trim(), is_sole_proprietor: document.getElementById('sf_sole').checked, w9_tax_id: document.getElementById('sf_taxid').value.trim(), w9_entity_type: document.getElementById('sf_entity').value, w9_signature_date: document.getElementById('sf_sigdate').value, w9_year: parseInt(document.getElementById('sf_w9yr').value)||null, w9_on_file: document.getElementById('sf_w9file').checked, notes: document.getElementById('sf_notes').value.trim() };
+  if (editingSubId) { DB.update('subs', editingSubId, data); }
+  else { const rec = DB.insert('subs', data); const gcId = parseInt(document.getElementById('sf_gc')?.value||'0'); if (gcId) DB.insert('gc_subs', {gc_id:gcId, sub_id:rec.id, is_active:true}); }
+  bootstrap.Modal.getInstance(document.getElementById('subFormModal')).hide();
+  renderSubcontractors();
+}
+
+// ==================== POLICIES ====================
+function openAddPolicy(subId) { document.getElementById('policyModalTitle').textContent='Add Policy'; document.getElementById('policyModalBody').innerHTML=policyForm({sub_id:subId}); document.getElementById('policyFormSave').onclick=()=>savePolicy(null,subId); new bootstrap.Modal(document.getElementById('policyModal')).show(); }
+function openEditPolicy(policyId, subId) { document.getElementById('policyModalTitle').textContent='Edit Policy'; document.getElementById('policyModalBody').innerHTML=policyForm(DB.one('policies',p=>p.id===policyId)||{sub_id:subId}); document.getElementById('policyFormSave').onclick=()=>savePolicy(policyId,subId); new bootstrap.Modal(document.getElementById('policyModal')).show(); }
+
+function policyForm(p) {
+  const agents = DB.all('agents');
+  return `<div class="row g-3">
+    <div class="col-md-6"><label class="form-label">Policy Type *</label><select class="form-select" id="pf_type"><option value="general_liability" ${p.policy_type==='general_liability'?'selected':''}>General Liability</option><option value="workers_comp" ${p.policy_type==='workers_comp'?'selected':''}>Workers' Comp</option><option value="auto" ${p.policy_type==='auto'?'selected':''}>Commercial Auto</option></select></div>
+    <div class="col-md-6"><label class="form-label">Status</label><select class="form-select" id="pf_status"><option value="active" ${p.status==='active'?'selected':''}>Active</option><option value="expired" ${p.status==='expired'?'selected':''}>Expired</option><option value="cancelled" ${p.status==='cancelled'?'selected':''}>Cancelled</option><option value="pending" ${p.status==='pending'?'selected':''}>Pending</option></select></div>
+    <div class="col-md-6"><label class="form-label">Insurance Agent</label><select class="form-select" id="pf_agent"><option value="">— Unknown / Add Later —</option>${agents.map(a=>`<option value="${a.id}" ${p.agent_id===a.id?'selected':''}>${a.name} – ${a.agency_name||a.email}</option>`).join('')}</select></div>
+    <div class="col-md-6"><label class="form-label">Policy Number</label><input class="form-control" id="pf_num" value="${p.policy_number||''}"></div>
+    <div class="col-md-6"><label class="form-label">Carrier</label><input class="form-control" id="pf_carrier" value="${p.carrier||''}"></div>
+    <div class="col-md-6"><label class="form-label">Coverage Amount ($)</label><input type="number" class="form-control" id="pf_amount" value="${p.coverage_amount||''}" placeholder="1000000"></div>
+    <div class="col-md-6"><label class="form-label">Effective Date</label><input type="date" class="form-control" id="pf_eff" value="${p.effective_date||''}"></div>
+    <div class="col-md-6"><label class="form-label">Expiration Date</label><input type="date" class="form-control" id="pf_exp" value="${p.expiration_date||''}"></div>
+    <div class="col-12">
+      <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="pf_cert" ${p.certificate_on_file?'checked':''}><label class="form-check-label" for="pf_cert">Certificate on file</label></div>
+      <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="pf_addlreq" ${p.requires_additional_insured?'checked':''}><label class="form-check-label" for="pf_addlreq">Additional Insured required by GC</label></div>
+      <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="pf_addlconf" ${p.additional_insured_confirmed?'checked':''}><label class="form-check-label" for="pf_addlconf">Additional Insured confirmed on policy</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="pf_ghost" ${p.is_ghost_policy?'checked':''}><label class="form-check-label" for="pf_ghost">Ghost Policy <small class="text-muted">(WC exemption via ghost policy)</small></label></div>
+    </div>
+    <div class="col-12"><label class="form-label">Notes</label><textarea class="form-control" id="pf_notes" rows="2">${p.notes||''}</textarea></div>
+  </div>`;
+}
+
+function savePolicy(policyId, subId) {
+  const data = { sub_id:subId, policy_type:document.getElementById('pf_type').value, status:document.getElementById('pf_status').value, agent_id:parseInt(document.getElementById('pf_agent').value)||null, policy_number:document.getElementById('pf_num').value.trim(), carrier:document.getElementById('pf_carrier').value.trim(), coverage_amount:parseFloat(document.getElementById('pf_amount').value)||null, effective_date:document.getElementById('pf_eff').value, expiration_date:document.getElementById('pf_exp').value, certificate_on_file:document.getElementById('pf_cert').checked, requires_additional_insured:document.getElementById('pf_addlreq').checked, additional_insured_confirmed:document.getElementById('pf_addlconf').checked, is_ghost_policy:document.getElementById('pf_ghost').checked, notes:document.getElementById('pf_notes').value.trim() };
+  if (policyId) DB.update('policies', policyId, data); else DB.insert('policies', data);
+  bootstrap.Modal.getInstance(document.getElementById('policyModal')).hide();
+  openSubDetail(subId);
+}
+
+function verifyPolicy(policyId, subId) {
+  DB.update('policies', policyId, { last_verified_date: new Date().toISOString().split('T')[0] });
+  openSubDetail(subId||_currentSubId);
+}
+
+function openEmailForPolicyId(policyId) {
+  const p = _policyCache[policyId] || DB.one('policies', x=>x.id===policyId);
+  if (!p) { alert('Policy not found'); return; }
+  const agent = p.agent_id ? DB.one('agents', a=>a.id===p.agent_id) : null;
+  const sub = DB.one('subs', s=>s.id===p.sub_id);
+  const days = daysUntil(p.expiration_date);
+  const subject = `ACTION REQUIRED: Insurance Expiring in ${days} Days – ${sub?.company_name||''}`;
+  const body = `Dear ${agent?.name||'Agent'},\n\nThis is a reminder that the ${p.policy_type==='general_liability'?'General Liability':"Workers' Comp"} policy for ${sub?.company_name||''} (Policy #${p.policy_number||'N/A'}) expires on ${fmtDate(p.expiration_date)}.\n\nPlease provide a renewed certificate at your earliest convenience.\n\nSend to: compliance@insuretrack.com\n\nThank you,\n${AUTH.user.name}\nInsureTrack`;
+  showEmailModal({ to_email:agent?.email||'', to_name:agent?.name||'', subject, body, sub_id:p.sub_id, policy_id:p.id, template_type:'expiration_warning' });
+}
+
+// ==================== GCS ====================
+function renderGCs() {
+  const gcs = DB.all('gcs');
+  document.getElementById('content-area').innerHTML = `<div class="card-it">
+    <div class="card-it-header"><h6><i class="bi bi-building me-2"></i>General Contractors (${gcs.length})</h6><button class="btn btn-sm btn-primary" onclick="openAddGC()"><i class="bi bi-plus-lg me-1"></i>Add GC</button></div>
+    <table class="table table-hover mb-0"><thead><tr><th>Company</th><th>Contact</th><th>Email</th><th>Phone</th><th>License</th><th>Addl. Insured</th><th></th></tr></thead>
+    <tbody>${gcs.map(gc=>`<tr>
+      <td><strong>${gc.company_name}</strong></td><td>${gc.contact_name||'—'}</td>
+      <td>${gc.email?`<a href="mailto:${gc.email}">${gc.email}</a>`:'—'}</td><td>${gc.phone||'—'}</td><td>${gc.license_number||'—'}</td>
+      <td class="text-center">${gc.require_additional_insured?'<span class="badge-active"><i class="bi bi-check-lg"></i> Yes</span>':'<span class="badge-pending">No</span>'}</td>
+      <td><button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="openEditGC(${gc.id})"><i class="bi bi-pencil"></i></button></td>
+    </tr>`).join('')}</tbody></table>
+  </div>`;
+}
+
+function openAddGC() { editingGCId=null; document.getElementById('gcFormTitle').textContent='Add General Contractor'; document.getElementById('gcFormBody').innerHTML=gcForm({}); new bootstrap.Modal(document.getElementById('gcFormModal')).show(); }
+function openEditGC(id) { editingGCId=id; document.getElementById('gcFormTitle').textContent='Edit General Contractor'; document.getElementById('gcFormBody').innerHTML=gcForm(DB.one('gcs',g=>g.id===id)||{}); new bootstrap.Modal(document.getElementById('gcFormModal')).show(); }
+function gcForm(gc) {
+  return `<div class="row g-3">
+    <div class="col-12"><label class="form-label">Company Name *</label><input class="form-control" id="gf_company" value="${gc.company_name||''}"></div>
+    <div class="col-md-6"><label class="form-label">Contact Name</label><input class="form-control" id="gf_contact" value="${gc.contact_name||''}"></div>
+    <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" id="gf_email" value="${gc.email||''}"></div>
+    <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" id="gf_phone" value="${gc.phone||''}"></div>
+    <div class="col-md-6"><label class="form-label">License Number</label><input class="form-control" id="gf_license" value="${gc.license_number||''}"></div>
+    <div class="col-12"><input class="form-control" id="gf_address" placeholder="Address" value="${gc.address||''}"></div>
+    <div class="col-md-5"><input class="form-control" id="gf_city" placeholder="City" value="${gc.city||'Boise'}"></div>
+    <div class="col-md-3"><input class="form-control" id="gf_state" placeholder="ST" value="${gc.state||'ID'}"></div>
+    <div class="col-md-4"><input class="form-control" id="gf_zip" placeholder="ZIP" value="${gc.zip||''}"></div>
+    <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="gf_addl" ${gc.require_additional_insured?'checked':''}><label class="form-check-label" for="gf_addl">Require Additional Insured on all subcontractor policies</label></div></div>
+    <div class="col-12"><label class="form-label">Notes</label><textarea class="form-control" id="gf_notes" rows="2">${gc.notes||''}</textarea></div>
+  </div>`;
+}
+function saveGC() {
+  const company_name = document.getElementById('gf_company').value.trim();
+  if (!company_name) { alert('Company name required'); return; }
+  const data = { company_name, contact_name:document.getElementById('gf_contact').value.trim(), email:document.getElementById('gf_email').value.trim(), phone:document.getElementById('gf_phone').value.trim(), license_number:document.getElementById('gf_license').value.trim(), address:document.getElementById('gf_address').value.trim(), city:document.getElementById('gf_city').value.trim(), state:document.getElementById('gf_state').value.trim(), zip:document.getElementById('gf_zip').value.trim(), require_additional_insured:document.getElementById('gf_addl').checked, notes:document.getElementById('gf_notes').value.trim() };
+  if (editingGCId) DB.update('gcs', editingGCId, data); else DB.insert('gcs', data);
+  bootstrap.Modal.getInstance(document.getElementById('gcFormModal')).hide();
+  renderGCs();
+}
+
+// ==================== AGENTS ====================
+function renderAgents() {
+  const agents = DB.all('agents');
+  agents.forEach(a => _agentCache[a.id] = a);
+  document.getElementById('content-area').innerHTML = `<div class="card-it">
+    <div class="card-it-header"><h6><i class="bi bi-shield-check me-2"></i>Insurance Agents (${agents.length})</h6><button class="btn btn-sm btn-primary" onclick="openAddAgent()"><i class="bi bi-plus-lg me-1"></i>Add Agent</button></div>
+    <table class="table table-hover mb-0"><thead><tr><th>Name</th><th>Agency</th><th>Email</th><th>Phone</th><th></th></tr></thead>
+    <tbody>${agents.map(a=>`<tr>
+      <td><strong>${a.name}</strong></td><td>${a.agency_name||'—'}</td>
+      <td><a href="mailto:${a.email}">${a.email}</a></td><td>${a.phone||'—'}</td>
+      <td><div class="d-flex gap-1">
+        <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="openEditAgentById(${a.id})"><i class="bi bi-pencil"></i></button>
+        <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openEmailToAgentById(${a.id})"><i class="bi bi-envelope"></i></button>
+      </div></td>
+    </tr>`).join('')}</tbody></table>
+  </div>`;
+}
+function openAddAgent() { document.getElementById('agentFormBody').innerHTML=agentForm({}); document.getElementById('agentFormBody').dataset.editId=''; new bootstrap.Modal(document.getElementById('agentFormModal')).show(); }
+function openEditAgentById(id) { const a=_agentCache[id]||DB.one('agents',x=>x.id===id); if(a){document.getElementById('agentFormBody').innerHTML=agentForm(a);document.getElementById('agentFormBody').dataset.editId=id;new bootstrap.Modal(document.getElementById('agentFormModal')).show();} }
+function openEmailToAgentById(id) { const a=_agentCache[id]; if(a) showEmailModal({to_email:a.email,to_name:a.name,subject:'Insurance Verification Request',body:`Dear ${a.name},\n\nPlease confirm that all policies for your clients are currently active and in good standing.\n\nThank you,\n${AUTH.user.name}\nInsureTrack`}); }
+function agentForm(a) {
+  return `<div class="row g-3">
+    <div class="col-12"><label class="form-label">Agent Name *</label><input class="form-control" id="af_name" value="${a.name||''}"></div>
+    <div class="col-12"><label class="form-label">Agency Name</label><input class="form-control" id="af_agency" value="${a.agency_name||''}"></div>
+    <div class="col-md-6"><label class="form-label">Email *</label><input type="email" class="form-control" id="af_email" value="${a.email||''}"></div>
+    <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" id="af_phone" value="${a.phone||''}"></div>
+  </div>`;
+}
+function saveAgent() {
+  const editId = parseInt(document.getElementById('agentFormBody').dataset.editId||'0')||null;
+  const data = { name:document.getElementById('af_name').value.trim(), email:document.getElementById('af_email').value.trim(), phone:document.getElementById('af_phone').value.trim(), agency_name:document.getElementById('af_agency').value.trim() };
+  if (!data.name||!data.email) { alert('Name and email required'); return; }
+  if (editId) DB.update('agents',editId,data); else DB.insert('agents',data);
+  bootstrap.Modal.getInstance(document.getElementById('agentFormModal')).hide();
+  renderAgents();
+}
+
+// ==================== EMAIL ====================
+function openEmailComposer(subId) {
+  const sub = DB.one('subs', s=>s.id===subId);
+  if (!sub) return;
+  const policies = DB.find('policies', p=>p.sub_id===subId);
+  const gl = policies.find(p=>p.policy_type==='general_liability');
+  const agent = gl?.agent_id ? DB.one('agents',a=>a.id===gl.agent_id) : null;
+  const gc = DB.find('gc_subs',l=>l.sub_id===subId&&l.is_active).map(l=>DB.one('gcs',g=>g.id===l.gc_id)).filter(Boolean)[0];
+  const templates = DB.all('templates');
+  const tmpl = templates.find(t=>t.template_type==='certificate_request');
+  let body = tmpl ? tmpl.body : '';
+  if (body) {
+    const wc = policies.find(p=>p.policy_type==='workers_comp');
+    body = body.replace(/\{\{sub_name\}\}/g,sub.company_name).replace(/\{\{agent_name\}\}/g,agent?.name||'Agent').replace(/\{\{gc_name\}\}/g,gc?.company_name||'GC').replace(/\{\{gl_policy_number\}\}/g,gl?.policy_number||'N/A').replace(/\{\{wc_policy_number\}\}/g,wc?.policy_number||'N/A').replace(/\{\{admin_name\}\}/g,AUTH.user.name).replace(/\{\{admin_email\}\}/g,AUTH.user.email||'compliance@insuretrack.com');
+  }
+  showEmailModal({ to_email:agent?.email||'', to_name:agent?.name||'', subject:(tmpl?.subject||'').replace('{{sub_name}}',sub.company_name), body, sub_id:subId, template_type:'certificate_request' });
+}
+
+function showEmailModal(ctx) {
+  const templates = DB.all('templates');
+  document.getElementById('emailModalBody').innerHTML = `
+    <div class="mb-3"><label class="form-label">Use Template</label><select class="form-select" id="em_tmpl" onchange="applyTemplate(this.value,${ctx.sub_id||'null'})"><option value="">— Custom —</option>${templates.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}</select></div>
+    <div class="mb-3"><label class="form-label">To (Email) *</label><input type="email" class="form-control" id="em_to" value="${ctx.to_email||''}"></div>
+    <div class="mb-3"><label class="form-label">To (Name)</label><input class="form-control" id="em_toname" value="${ctx.to_name||''}"></div>
+    <div class="mb-3"><label class="form-label">Subject *</label><input class="form-control" id="em_subj" value="${(ctx.subject||'').replace(/"/g,'&quot;')}"></div>
+    <div class="mb-3"><label class="form-label">Message *</label><textarea class="form-control" id="em_body" rows="10" style="font-family:monospace;font-size:.85rem">${ctx.body||''}</textarea></div>
+    <input type="hidden" id="em_subid" value="${ctx.sub_id||''}">
+    <input type="hidden" id="em_polid" value="${ctx.policy_id||''}">
+    <input type="hidden" id="em_type" value="${ctx.template_type||'custom'}">
+    <div class="alert alert-info mb-0" style="font-size:.8rem"><i class="bi bi-info-circle me-1"></i>Emails are logged for compliance tracking. Configure SMTP in production to send real emails.</div>`;
+  new bootstrap.Modal(document.getElementById('emailModal')).show();
+}
+
+function applyTemplate(tmplId, subId) {
+  if (!tmplId) return;
+  const tmpl = DB.one('templates', t=>t.id===parseInt(tmplId));
+  if (!tmpl) return;
+  let body = tmpl.body, subj = tmpl.subject;
+  if (subId) {
+    const sub = DB.one('subs',s=>s.id===subId);
+    const policies = DB.find('policies',p=>p.sub_id===subId);
+    const gl = policies.find(p=>p.policy_type==='general_liability');
+    const wc = policies.find(p=>p.policy_type==='workers_comp');
+    const agent = gl?.agent_id?DB.one('agents',a=>a.id===gl.agent_id):null;
+    const gc = DB.find('gc_subs',l=>l.sub_id===subId&&l.is_active).map(l=>DB.one('gcs',g=>g.id===l.gc_id)).filter(Boolean)[0];
+    const vars = {sub_name:sub?.company_name||'',agent_name:agent?.name||'Agent',gc_name:gc?.company_name||'GC',gl_policy_number:gl?.policy_number||'N/A',wc_policy_number:wc?.policy_number||'N/A',admin_name:AUTH.user.name,admin_email:AUTH.user.email||'compliance@insuretrack.com'};
+    Object.entries(vars).forEach(([k,v])=>{ body=body.replace(new RegExp('\\{\\{'+k+'\\}\\}','g'),v); subj=subj.replace(new RegExp('\\{\\{'+k+'\\}\\}','g'),v); });
+  }
+  document.getElementById('em_subj').value = subj;
+  document.getElementById('em_body').value = body;
+}
+
+function sendEmail() {
+  const to_email = document.getElementById('em_to').value.trim();
+  const subject = document.getElementById('em_subj').value.trim();
+  const body = document.getElementById('em_body').value.trim();
+  if (!to_email||!subject||!body) { alert('To, Subject, and Body are required'); return; }
+  DB.insert('email_log', { to_email, to_name:document.getElementById('em_toname').value.trim(), template_type:document.getElementById('em_type').value, subject, body, sent_by_id:AUTH.user.id, sent_by_name:AUTH.user.name, sub_id:parseInt(document.getElementById('em_subid').value)||null, policy_id:parseInt(document.getElementById('em_polid').value)||null, status:'sent' });
+  bootstrap.Modal.getInstance(document.getElementById('emailModal')).hide();
+  alert('✓ Email logged successfully!\n\nIn production, configure SMTP settings to send real emails.');
+  if (currentPage==='emails') renderEmails();
+}
+
+function renderEmails() {
+  const emails = DB.all('email_log').reverse();
+  document.getElementById('content-area').innerHTML = `<div class="card-it">
+    <div class="card-it-header"><h6><i class="bi bi-envelope me-2"></i>Email Activity Log (${emails.length})</h6><button class="btn btn-sm btn-primary" onclick="showEmailModal({})"><i class="bi bi-plus-lg me-1"></i>Compose</button></div>
+    ${emails.length===0?'<div class="empty-state"><i class="bi bi-envelope"></i>No emails sent yet</div>':`
+    <table class="table table-hover mb-0"><thead><tr><th>Date</th><th>To</th><th>Type</th><th>Subject</th><th>Sent By</th><th></th></tr></thead>
+    <tbody>${emails.map(e=>`<tr>
+      <td style="font-size:.8rem;white-space:nowrap">${fmtDT(e.created_at)}</td>
+      <td><strong>${e.to_name||''}</strong><br><small class="text-muted">${e.to_email}</small></td>
+      <td><span class="badge bg-secondary" style="font-size:.7rem">${(e.template_type||'custom').replace(/_/g,' ')}</span></td>
+      <td style="font-size:.85rem">${e.subject}</td>
+      <td style="font-size:.8rem">${e.sent_by_name||'—'}</td>
+      <td><button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="previewEmail(${e.id})"><i class="bi bi-eye"></i></button></td>
+    </tr>`).join('')}</tbody></table>`}
+  </div>`;
+}
+
+function previewEmail(id) {
+  const e = DB.one('email_log', x=>x.id===id);
+  if (!e) return;
+  const w = window.open('','_blank','width=700,height=600');
+  w.document.write(`<!DOCTYPE html><html><head><title>Email Preview</title></head><body style="font-family:sans-serif;padding:20px;max-width:600px"><div style="background:#f5f5f5;padding:15px;border-radius:8px;margin-bottom:15px"><strong>To:</strong> ${e.to_name||''} &lt;${e.to_email}&gt;<br><strong>Subject:</strong> ${e.subject}<br><strong>Sent:</strong> ${fmtDT(e.created_at)}</div><pre style="white-space:pre-wrap;font-family:inherit;font-size:14px">${e.body}</pre></body></html>`);
+}
+
+// ==================== TEMPLATES ====================
+function renderTemplates() {
+  const templates = DB.all('templates');
+  document.getElementById('content-area').innerHTML = `<div class="card-it">
+    <div class="card-it-header"><h6><i class="bi bi-file-text me-2"></i>Email Templates</h6></div>
+    <div class="p-3"><div class="accordion" id="tmplAcc">${templates.map((t,i)=>`
+      <div class="accordion-item mb-2 border rounded">
+        <h2 class="accordion-header"><button class="accordion-button ${i>0?'collapsed':''}" type="button" data-bs-toggle="collapse" data-bs-target="#tb${t.id}">
+          <span class="badge bg-primary me-2" style="font-size:.7rem">${t.template_type.replace(/_/g,' ')}</span>${t.name}
+        </button></h2>
+        <div id="tb${t.id}" class="accordion-collapse collapse ${i===0?'show':''}">
+          <div class="accordion-body">
+            <div class="mb-2"><label class="form-label">Subject</label><input class="form-control" id="ts_subj_${t.id}" value="${t.subject.replace(/"/g,'&quot;')}"></div>
+            <div class="mb-3"><label class="form-label">Body <small class="text-muted">(vars: {{sub_name}}, {{agent_name}}, {{gc_name}}, {{admin_name}}, {{gl_policy_number}}, {{wc_policy_number}})</small></label><textarea class="form-control" id="ts_body_${t.id}" rows="12" style="font-family:monospace;font-size:.8rem">${t.body}</textarea></div>
+            <button class="btn btn-sm btn-primary" onclick="saveTmpl(${t.id})"><i class="bi bi-save me-1"></i>Save Changes</button>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div></div>
+  </div>`;
+}
+function saveTmpl(id) {
+  DB.update('templates', id, { subject:document.getElementById(`ts_subj_${id}`).value, body:document.getElementById(`ts_body_${id}`).value });
+  alert('✓ Template saved');
+}
+
+// ==================== REPORTS ====================
+function renderReports() {
+  const subs = DB.all('subs').map(s => {
+    const policies = DB.find('policies', p=>p.sub_id===s.id);
+    const gl = policies.find(p=>p.policy_type==='general_liability');
+    const wc = policies.find(p=>p.policy_type==='workers_comp');
+    const gcs = DB.find('gc_subs',l=>l.sub_id===s.id&&l.is_active).map(l=>DB.one('gcs',g=>g.id===l.gc_id)).filter(Boolean);
+    return { ...s, computed_status:computeStatus(s.id), gl, wc, general_contractors:gcs };
+  });
+  const counts = {active:0,expiring_soon:0,non_compliant:0,pending:0};
+  subs.forEach(s => counts[s.computed_status]=(counts[s.computed_status]||0)+1);
+  document.getElementById('content-area').innerHTML = `
+    <div class="row g-3 mb-4">
+      <div class="col-md-3"><div class="stat-card text-center"><div class="stat-num" style="color:#166534">${counts.active}</div><div class="stat-label">Compliant</div></div></div>
+      <div class="col-md-3"><div class="stat-card text-center"><div class="stat-num" style="color:#92400e">${counts.expiring_soon}</div><div class="stat-label">Expiring Soon</div></div></div>
+      <div class="col-md-3"><div class="stat-card text-center"><div class="stat-num" style="color:#991b1b">${counts.non_compliant}</div><div class="stat-label">Non-Compliant</div></div></div>
+      <div class="col-md-3"><div class="stat-card text-center"><div class="stat-num" style="color:#475569">${counts.pending}</div><div class="stat-label">Pending</div></div></div>
+    </div>
+    <div class="card-it">
+      <div class="card-it-header"><h6><i class="bi bi-bar-chart me-2"></i>Full Compliance Report</h6><button class="btn btn-sm btn-outline-secondary" onclick="exportCSV()"><i class="bi bi-download me-1"></i>Export CSV</button></div>
+      <div class="table-responsive"><table class="table table-hover mb-0" id="reportTable">
+        <thead><tr><th>Subcontractor</th><th>Trade</th><th>GC(s)</th><th>Status</th><th>W9</th><th>GL Policy</th><th>GL Expires</th><th>WC Policy</th><th>WC Expires</th><th>Addl. Insured</th></tr></thead>
+        <tbody>${subs.map(s=>`<tr class="sub-row" onclick="openSubDetail(${s.id})">
+          <td><strong>${s.company_name}</strong><br><small class="text-muted">${s.contact_name}</small></td>
+          <td>${s.trade||'—'}</td>
+          <td style="font-size:.75rem">${s.general_contractors.map(g=>g.company_name).join(', ')||'—'}</td>
+          <td>${statusBadge(s.computed_status)}</td>
+          <td class="text-center">${s.w9_on_file?`<span class="badge-active">${s.w9_year}</span>`:'<span class="badge-noncompliant">Missing</span>'}</td>
+          <td style="font-size:.8rem">${s.gl?s.gl.policy_number||'On file':'<span class="text-danger">Missing</span>'}</td>
+          <td>${s.gl?expCell(s.gl):'—'}</td>
+          <td style="font-size:.8rem">${s.wc?s.wc.policy_number||'On file':s.is_sole_proprietor?'<span class="text-muted">Sole Prop</span>':'<span class="text-danger">Missing</span>'}</td>
+          <td>${s.wc?expCell(s.wc):'—'}</td>
+          <td class="text-center">${s.gl?.requires_additional_insured?(s.gl.additional_insured_confirmed?'<i class="bi bi-check-circle text-success"></i>':'<i class="bi bi-exclamation-circle text-warning"></i>'):'—'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
+}
+function expCell(p) { const d=daysUntil(p.expiration_date); if(!p.expiration_date)return'—'; if(d<0)return`<span class="badge-noncompliant">${fmtDate(p.expiration_date)}</span>`; if(d<=30)return`<span class="badge-expiring">${fmtDate(p.expiration_date)} (${d}d)</span>`; return`<span style="font-size:.8rem">${fmtDate(p.expiration_date)}</span>`; }
+function exportCSV() {
+  const t = document.getElementById('reportTable'); if(!t)return;
+  let csv=''; t.querySelectorAll('tr').forEach(r=>{ csv+=Array.from(r.querySelectorAll('th,td')).map(c=>'"'+c.innerText.replace(/"/g,'""').replace(/\n/g,' ')+'"').join(',')+'\n'; });
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=`insuretrack_compliance_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+}
+
+// ==================== NOTIFICATIONS ====================
+function refreshNotifBadge() {
+  const uid = AUTH.user?.id;
+  const count = DB.find('notifications', n=>n.user_id===uid&&!n.is_read).length;
+  const b=document.getElementById('notif-badge'); const sb=document.getElementById('notif-sidebar-badge');
+  if(count>0){ if(b){b.textContent=count;b.style.display='';} if(sb){sb.textContent=count;sb.classList.remove('d-none');} }
+  else { if(b)b.style.display='none'; if(sb)sb.classList.add('d-none'); }
+}
+function renderNotifications() {
+  const uid = AUTH.user?.id;
+  const notifs = DB.find('notifications', n=>n.user_id===uid).reverse();
+  const unread = notifs.filter(n=>!n.is_read).length;
+  document.getElementById('content-area').innerHTML = `<div class="card-it">
+    <div class="card-it-header"><h6><i class="bi bi-bell me-2"></i>Notifications (${unread} unread)</h6><button class="btn btn-sm btn-outline-secondary" onclick="markAllRead()">Mark All Read</button></div>
+    <div>${notifs.length===0?'<div class="empty-state"><i class="bi bi-bell-slash"></i>No notifications</div>':notifs.map(n=>`
+      <div class="d-flex align-items-start gap-3 p-3 border-bottom ${n.is_read?'':'bg-light'}" id="notif-${n.id}">
+        <div class="mt-1">${notifIcon(n.type)}</div>
+        <div class="flex-fill">
+          <div class="fw-bold" style="font-size:.875rem">${n.title}</div>
+          <div class="text-muted" style="font-size:.8rem">${n.message}</div>
+          <div style="font-size:.72rem;color:#94a3b8">${fmtDT(n.created_at)}</div>
+        </div>
+        ${!n.is_read?`<button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="markRead(${n.id})" style="font-size:.7rem;white-space:nowrap">Mark read</button>`:''}
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+function notifIcon(t) { return {expiration_warning:'<i class="bi bi-exclamation-triangle text-warning fs-5"></i>',non_compliant:'<i class="bi bi-x-circle text-danger fs-5"></i>',pending_w9:'<i class="bi bi-file-earmark text-secondary fs-5"></i>',email_sent:'<i class="bi bi-envelope text-primary fs-5"></i>'}[t]||'<i class="bi bi-bell text-muted fs-5"></i>'; }
+function markRead(id) { DB.update('notifications',id,{is_read:true}); document.getElementById('notif-'+id)?.classList.remove('bg-light'); refreshNotifBadge(); }
+function markAllRead() { const uid=AUTH.user?.id; DB.find('notifications',n=>n.user_id===uid&&!n.is_read).forEach(n=>DB.update('notifications',n.id,{is_read:true})); renderNotifications(); refreshNotifBadge(); }
+function checkExpirations() {
+  const today = new Date().toISOString().split('T')[0];
+  const future = new Date(); future.setDate(future.getDate()+30); const fut=future.toISOString().split('T')[0];
+  let created=0;
+  DB.all('policies').forEach(p => {
+    const d=daysUntil(p.expiration_date);
+    if (d!==null&&d<0) DB.update('policies',p.id,{status:'expired'});
+    if (d!==null&&d<=30&&d>=0) {
+      const sub=DB.one('subs',s=>s.id===p.sub_id);
+      const exists=DB.one('notifications',n=>n.related_id===p.id&&n.type==='expiration_warning'&&!n.is_read);
+      if (!exists&&sub) { DB.insert('notifications',{user_id:1,type:'expiration_warning',title:'Policy Expiring Soon',message:`${sub.company_name} – ${p.policy_type==='general_liability'?'General Liability':"Workers' Comp"} expires in ${d} days`,related_type:'policy',related_id:p.id,is_read:false}); created++; }
+    }
+  });
+  refreshNotifBadge();
+  alert(`Checked ${DB.all('policies').length} policies. ${created} new notification(s) created.`);
+  renderDashboard();
+}
+
+// ==================== INIT ====================
+seedIfNeeded();
+const sess = sessionStorage.getItem('it_session');
+if (sess) { try { AUTH.user={...JSON.parse(sess)}; startApp(); } catch(e) { sessionStorage.removeItem('it_session'); } }
+</script>
+</body>
+</html>

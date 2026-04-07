@@ -1,2 +1,28 @@
+# Dependencies
+node_modules/
+
+# Environment variables — NEVER commit these
+.env
 .env.local
-node_modules
+.env.*.local
+
+# SQLite database files (local dev only)
+*.db
+*.db-shm
+*.db-wal
+
+# Local runtime directory
+insuretrack-run/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Vercel output
+.vercel/
+
+# Logs
+npm-debug.log*
+*.log
